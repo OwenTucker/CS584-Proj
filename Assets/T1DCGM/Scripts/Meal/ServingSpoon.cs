@@ -76,6 +76,9 @@ namespace T1DCGM
             return false;
         }
 
-        public void Empty() => contents?.SetVolume(0f);
+        public void Empty()
+        {
+            if (contents != null) contents.SetVolume(0f);
+        }
     }
 }

@@ -41,7 +41,7 @@ namespace T1DCGM
         {
             if (mound != null) mound.SetVolume(0f);
             foreach (var b in BreadOnPlate())
-                b.GetComponent<ReturnHome>()?.GoHome();
+                if (b.TryGetComponent<ReturnHome>(out var home)) home.GoHome();
         }
     }
 }

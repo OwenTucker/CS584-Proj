@@ -73,7 +73,9 @@ namespace T1DCGM.EditorTools
             foreach (var dir in new[] { "Scenes", "Meshes", "Materials", "Textures", "Fonts" })
                 if (!AssetDatabase.IsValidFolder($"{k_Root}/{dir}"))
                     AssetDatabase.CreateFolder(k_Root, dir);
-            s_Font = CrispFont() ?? AssetDatabase.LoadAssetAtPath<TMP_FontAsset>(k_InterFont) ?? TMP_Settings.defaultFontAsset;
+            s_Font = CrispFont();
+            if (s_Font == null) s_Font = AssetDatabase.LoadAssetAtPath<TMP_FontAsset>(k_InterFont);
+            if (s_Font == null) s_Font = TMP_Settings.defaultFontAsset;
             CreateMaterials();
         }
 
@@ -211,7 +213,9 @@ namespace T1DCGM.EditorTools
 
         static XRGrabInteractable Grab(GameObject go, Collider collider, float mass, bool gravity = true)
         {
-            var rb = go.GetComponent<Rigidbody>() ?? go.AddComponent<Rigidbody>();
+            // Not "??": Unity returns a fake-null object for a missing component, which "??" treats as present.
+            if (!go.TryGetComponent<Rigidbody>(out var rb))
+                rb = go.AddComponent<Rigidbody>();
             rb.mass = mass;
             rb.useGravity = gravity;
             rb.isKinematic = !gravity;
