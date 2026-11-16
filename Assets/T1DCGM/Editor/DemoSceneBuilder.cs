@@ -106,6 +106,10 @@ namespace T1DCGM.EditorTools
             foreach (var t in rig.GetComponentsInChildren<Transform>(true))
                 if (t.name.StartsWith("Affordance Callouts"))
                     t.gameObject.SetActive(false);
+            // The template's gaze controller keeps poking the hidden callouts ("Coroutine couldn't be started ... inactive").
+            foreach (var mb in rig.GetComponentsInChildren<MonoBehaviour>(true))
+                if (mb != null && mb.GetType().Name == "CalloutGazeController")
+                    mb.enabled = false;
             // A is "jump" in the template; the demo uses A to continue / record touches.
             foreach (var jump in rig.GetComponentsInChildren<JumpProvider>(true))
                 jump.enabled = false;
