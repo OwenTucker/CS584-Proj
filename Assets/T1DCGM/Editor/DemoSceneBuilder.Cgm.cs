@@ -1,10 +1,13 @@
 using TMPro;
+using Unity.XR.CompositionLayers;
+using Unity.XR.CompositionLayers.Layers;
 using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
 using UnityEngine.Rendering;
 using UnityEngine.Rendering.Universal;
 using UnityEngine.XR.ARFoundation;
+using UnityEngine.XR.OpenXR.Features.Meta;
 
 namespace T1DCGM.EditorTools
 {
@@ -27,6 +30,7 @@ namespace T1DCGM.EditorTools
             var cam = rig.GetComponentInChildren<Camera>(true);
             ConfigurePassthroughCamera(cam);
             new GameObject("AR Session").AddComponent<ARSession>();
+            AddCompositionLayers();
 
             // ---- station (moves in front of the user at start)
             var stationGo = new GameObject("Station (moves in front of you)");
@@ -160,6 +164,38 @@ namespace T1DCGM.EditorTools
                 cam.gameObject.AddComponent<ARCameraManager>();
             var bg = cam.GetComponent<ARCameraBackground>();
             if (bg != null) Object.DestroyImmediate(bg, true);
+        }
+
+        /// <summary>
+        /// Authors the two composition layers instead of letting the Meta plugin create passthrough at runtime:
+        /// the app's eye layer at order 0 (alpha-blended) and passthrough underneath at -1. The plugin uses an existing
+        /// passthrough layer if one is in the scene, so the order no longer depends on what registers first.
+        /// </summary>
+        static void AddCompositionLayers()
+        {
+            var eyeGo = new GameObject("Default Scene Layer (app view)");
+            var eye = eyeGo.AddComponent<CompositionLayer>();
+            eye.ChangeLayerDataType(typeof(DefaultLayerData));
+            SetLayerOrder(eye, 0);
+            if (eye.LayerData != null) eye.LayerData.BlendType = BlendType.Alpha;
+
+            var ptGo = new GameObject("Passthrough Layer (under the app view)");
+            var pt = ptGo.AddComponent<CompositionLayer>();
+            pt.ChangeLayerDataType(typeof(PassthroughLayerData));
+            SetLayerOrder(pt, -1);
+        }
+
+        /// <summary>Sets the serialized order directly: the layer manager does not run in Edit mode.</summary>
+        static void SetLayerOrder(CompositionLayer layer, int order)
+        {
+            var so = new SerializedObject(layer);
+            var orderProp = so.FindProperty("m_Order");
+            if (orderProp != null) orderProp.intValue = order;
+            var initProp = so.FindProperty("m_OrderInitialized");
+            if (initProp != null) initProp.boolValue = true;
+            so.ApplyModifiedPropertiesWithoutUndo();
+            if (layer.Order != order)
+                Debug.LogWarning($"[T1D] Could not set composition layer order {order} on {layer.name} (is {layer.Order}).");
         }
 
         static void SetLayer(GameObject root, int layer)
