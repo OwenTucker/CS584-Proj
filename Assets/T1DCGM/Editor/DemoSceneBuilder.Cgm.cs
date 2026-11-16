@@ -120,7 +120,33 @@ namespace T1DCGM.EditorTools
             if (trainer.rightController == null)
                 Debug.LogWarning("[T1D] 'Right Controller' not found under the XR Origin; the trainer will search at runtime.");
 
+            // Fallback (DESIGN.md): no passthrough -> simple virtual room instead of black.
+            var fallback = trainerGo.AddComponent<PassthroughFallback>();
+            fallback.xrCamera = cam;
+            fallback.cameraManager = cam.GetComponent<ARCameraManager>();
+            fallback.fallbackRoom = BuildFallbackRoom();
+            fallback.trainer = trainer;
+
             EditorSceneManager.SaveScene(scene, k_CgmScenePath);
+        }
+
+        /// <summary>Plain room around the start point, shown only when passthrough is unavailable.</summary>
+        static GameObject BuildFallbackRoom()
+        {
+            var root = new GameObject("Virtual Room (no passthrough)");
+            var floor = GameObject.CreatePrimitive(PrimitiveType.Plane);
+            floor.name = "Floor";
+            floor.transform.SetParent(root.transform, false);
+            floor.transform.localScale = new Vector3(0.7f, 1f, 0.7f);
+            floor.GetComponent<Renderer>().sharedMaterial = s_Mats["Floor"];
+            const float h = 2.7f, t = 0.1f, half = 3.5f;
+            var wall = s_Mats["Wall"];
+            Box("Wall N", root.transform, wall, new Vector3(0f, h / 2f, half), new Vector3(2f * half, h, t), false);
+            Box("Wall S", root.transform, wall, new Vector3(0f, h / 2f, -half), new Vector3(2f * half, h, t), false);
+            Box("Wall E", root.transform, wall, new Vector3(half, h / 2f, 0f), new Vector3(t, h, 2f * half), false);
+            Box("Wall W", root.transform, wall, new Vector3(-half, h / 2f, 0f), new Vector3(t, h, 2f * half), false);
+            root.SetActive(false);
+            return root;
         }
 
         static void ConfigurePassthroughCamera(Camera cam)

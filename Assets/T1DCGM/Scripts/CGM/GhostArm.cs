@@ -58,12 +58,15 @@ namespace T1DCGM
             m_Outline.enabled = false;
         }
 
-        public void SetVisible(bool visible)
+        public void SetVisible(bool visible) => SetVisible(visible, visible);
+
+        /// <summary>The sleeve alone stands in for the real arm when passthrough is off; zone and old sites are guidance.</summary>
+        public void SetVisible(bool sleeve, bool guidance)
         {
-            if (m_Sleeve != null) m_Sleeve.SetActive(visible);
-            if (m_Zone != null) m_Zone.SetActive(visible);
-            foreach (var s in m_OldSites) if (s != null) s.SetActive(visible);
-            if (!visible && m_Outline != null) m_Outline.enabled = false;
+            if (m_Sleeve != null) m_Sleeve.SetActive(sleeve);
+            if (m_Zone != null) m_Zone.SetActive(guidance);
+            foreach (var s in m_OldSites) if (s != null) s.SetActive(guidance);
+            if (!guidance && m_Outline != null) m_Outline.enabled = false;
         }
 
         /// <summary>Draws the sensor footprint where the applicator face would meet the skin.</summary>

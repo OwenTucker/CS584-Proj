@@ -69,6 +69,8 @@ namespace T1DCGM
         int m_Attempts;
         GameObject m_AppliedSensor;
         List<Vector2> m_OldSites = new List<Vector2>();
+        bool m_Passthrough = true;
+        string m_PassthroughNote = "";
 
         static readonly Color k_Yellow = new Color(1f, 0.84f, 0.25f);
 
@@ -304,7 +306,7 @@ namespace T1DCGM
             step = next;
             bool calibrated = m_Arm.valid && next >= CgmStep.Clean;
             bool guided = tier == GuidanceTier.Guided;
-            ghost.SetVisible(calibrated && guided);
+            ghost.SetVisible(calibrated && (guided || !m_Passthrough), calibrated && guided);
             if (mirror != null) mirror.SetActive(calibrated && guided && next < CgmStep.Result);
             if (next != CgmStep.Place) ghost.ShowOutline(default, false, false);
             m_WasGood = false;
@@ -330,7 +332,8 @@ namespace T1DCGM
                     board.Show(counter, "Continuous Glucose Monitor (CGM)", k_Yellow,
                         "To make informed decisions about your insulin doses, a CGM gives you a glucose reading <b>every 5 minutes</b>, day and night.\n\n" +
                         "A small sensor sits on the back of your upper arm with a thin filament just under the skin. Most sensors last 10 to 15 days, then you apply a new one at a new spot.\n\n" +
-                        "Today: apply a CGM to <b>your own arm</b>, then use it at lunch.",
+                        "Today: apply a CGM to <b>your own arm</b>, then use it at lunch." +
+                        (string.IsNullOrEmpty(m_PassthroughNote) ? "" : "\n\n" + m_PassthroughNote),
                         "A: continue      X (left): move this board in front of you", progress);
                     break;
                 case CgmStep.CalibShoulder:
@@ -531,7 +534,7 @@ namespace T1DCGM
             sb.Append("<size=80%>Tip: avoid spots you lie on at night. Pressure on the sensor can cause false low readings.</size>");
 
             step = CgmStep.Result;
-            ghost.SetVisible(tier == GuidanceTier.Guided);
+            ghost.SetVisible(tier == GuidanceTier.Guided || !m_Passthrough, tier == GuidanceTier.Guided);
             ghost.ShowOutline(default, false, false);
             if (mirror != null) mirror.SetActive(false);
             board.Show($"RESULT   ({TierName(tier).ToUpperInvariant()})", passed == 4 ? "CGM applied!" : $"Sensor applied: {passed} of 4 checks passed",
@@ -573,6 +576,19 @@ namespace T1DCGM
         void Play(AudioClip clip)
         {
             if (audioSource != null && clip != null) audioSource.PlayOneShot(clip);
+        }
+
+        /// <summary>Called by <see cref="PassthroughFallback"/>; without passthrough the sleeve is always shown.</summary>
+        public void SetPassthroughAvailable(bool available, string note)
+        {
+            m_Passthrough = available;
+            m_PassthroughNote = available ? "" : note;
+            if (step == CgmStep.Result)
+                ghost.SetVisible(tier == GuidanceTier.Guided || !m_Passthrough, tier == GuidanceTier.Guided);
+            else
+                Enter(step);
+            if (!available)
+                board.ShowFeedback("No passthrough: using a virtual room.", FeedbackKind.Info);
         }
 
         public bool TryLeave()

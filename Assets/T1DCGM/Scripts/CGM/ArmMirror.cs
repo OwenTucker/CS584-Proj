@@ -21,7 +21,7 @@ namespace T1DCGM
                 return;
             m_Texture = new RenderTexture(768, 768, 24) { name = "Arm Mirror" };
             mirrorCamera.targetTexture = m_Texture;
-            mirrorCamera.stereoTargetEye = StereoTargetEyeMask.None;
+            // URP renders a camera with a target texture as a normal (non-XR) camera; stereoTargetEye is built-in only.
             mirrorCamera.clearFlags = CameraClearFlags.SolidColor;
             mirrorCamera.backgroundColor = new Color(0.08f, 0.09f, 0.11f, 1f);
             if (display != null)
