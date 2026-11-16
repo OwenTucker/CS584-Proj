@@ -20,6 +20,8 @@ namespace T1DCGM
         public bool pressOnTouch = true;
         [Tooltip("How close (metres) the controller tip must get to the button's collider.")]
         public float touchDistance = 0.012f;
+        [Tooltip("Pokers under this transform are ignored (e.g. the hand holding the tablet this button is on).")]
+        public Transform ignorePokersUnder;
         public UnityEvent onPressed = new UnityEvent();
 
         Vector3 m_CapRest;
@@ -43,7 +45,9 @@ namespace T1DCGM
 
         void Start()
         {
-            m_Pokers.AddRange(FindObjectsByType<XRPokeInteractor>(FindObjectsInactive.Include, FindObjectsSortMode.None));
+            foreach (var poker in FindObjectsByType<XRPokeInteractor>(FindObjectsInactive.Include, FindObjectsSortMode.None))
+                if (ignorePokersUnder == null || !poker.transform.IsChildOf(ignorePokersUnder))
+                    m_Pokers.Add(poker);
         }
 
         protected override void OnDisable()

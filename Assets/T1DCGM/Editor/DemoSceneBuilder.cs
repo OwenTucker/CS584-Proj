@@ -466,9 +466,7 @@ namespace T1DCGM.EditorTools
             Lit("Grey", new Color(0.42f, 0.44f, 0.48f), 0.4f);
             Lit("White", new Color(0.94f, 0.94f, 0.95f), 0.5f);
             Lit("Steel", new Color(0.78f, 0.8f, 0.83f), 0.85f, 1f);
-            Lit("Counter", new Color(0.3f, 0.32f, 0.35f), 0.6f);
             Lit("Wood", new Color(0.55f, 0.38f, 0.22f), 0.35f);
-            Lit("Plate", new Color(0.97f, 0.97f, 0.95f), 0.75f);
             Lit("Blue", new Color(0.15f, 0.5f, 0.95f), 0.5f);
             Lit("Green", new Color(0.2f, 0.8f, 0.35f), 0.5f);
             Lit("Red", new Color(0.88f, 0.2f, 0.2f), 0.5f);
@@ -479,26 +477,50 @@ namespace T1DCGM.EditorTools
             Lit("Wipe", new Color(0.95f, 0.97f, 1f), 0.15f);
             Lit("WipePacket", new Color(0.25f, 0.5f, 0.9f), 0.5f);
             Lit("Crust", new Color(0.66f, 0.42f, 0.2f), 0.2f);
-            Lit("Crumb", new Color(0.96f, 0.9f, 0.76f), 0.1f);
-            Lit("Bagel", new Color(0.78f, 0.52f, 0.25f), 0.35f);
-            Lit("Penne", new Color(0.98f, 0.82f, 0.45f), 0.35f);
-            Lit("PastaBase", new Color(0.93f, 0.74f, 0.38f), 0.3f);
-            Lit("Rice", Color.white, 0.25f);
+            Lit("Bagel", new Color(0.8f, 0.55f, 0.28f), 0.4f);
             Lit("CupBall", new Color(0.95f, 0.85f, 0.2f, 0.45f), 0.6f, 0f, true);
-            Lit("TargetFood", new Color(0.3f, 0.95f, 0.45f, 0.4f), 0.5f, 0f, true);
             Lit("Sleeve", new Color(0.55f, 0.75f, 1f, 0.18f), 0.4f, 0f, true);
             Lit("Zone", new Color(0.3f, 1f, 0.45f, 0.45f), 0.4f, 0f, true);
             Lit("OldSite", new Color(1f, 0.2f, 0.2f, 0.85f), 0.4f, 0f, true);
 
-            var rice = s_Mats["Rice"];
-            var riceTex = SaveTexture("Rice Grains", GrainTexture());
-            rice.SetTexture("_BaseMap", riceTex);
-            rice.SetTextureScale("_BaseMap", new Vector2(3f, 3f));
+            // Lunch room.
+            var planks = SaveTexture("Wood Planks", FoodModels.PlankTexture());
+            Lit("WoodFloor", Color.white, 0.35f, 0f, false, planks, new Vector2(8f, 3f));
+            Lit("Wainscot", new Color(0.62f, 0.5f, 0.42f), 0.3f, 0f, false, planks, new Vector2(3f, 1f));
+            Lit("Trim", new Color(0.95f, 0.94f, 0.9f), 0.4f);
+            Lit("Ceiling", new Color(0.95f, 0.95f, 0.93f), 0.1f);
+            Lit("Tile", Color.white, 0.75f, 0f, false, SaveTexture("Subway Tile", FoodModels.TileTexture()), new Vector2(14f, 1.5f));
+            Lit("Chalkboard", new Color(0.13f, 0.17f, 0.15f), 0.1f);
+            Lit("Glass", new Color(0.85f, 0.93f, 1f, 0.14f), 0.95f, 0f, true);
+            Lit("Pad", new Color(0.35f, 0.65f, 0.95f, 0.3f), 0.5f, 0f, true);
+            Lit("LampShade", new Color(0.13f, 0.28f, 0.22f), 0.65f, 0.3f);
+            Lit("Terracotta", new Color(0.7f, 0.37f, 0.24f), 0.2f);
+            Lit("Leaf", new Color(0.17f, 0.42f, 0.18f), 0.45f);
+            Lit("Ceramic", new Color(0.97f, 0.96f, 0.94f), 0.85f);
+            Lit("BowlBand", new Color(0.2f, 0.33f, 0.68f), 0.85f);
+
+            // Food.
+            VertexLit("RiceGrain", new Color(0.99f, 0.98f, 0.95f), 0.55f);
+            VertexLit("Penne", new Color(0.97f, 0.81f, 0.47f), 0.45f);
+            Lit("RiceCore", new Color(0.8f, 0.78f, 0.72f), 0.3f, 0f, false, SaveTexture("Rice Grains", GrainTexture()), Vector2.one);
+            Lit("Crumb", Color.white, 0.1f, 0f, false, SaveTexture("Bread Crumb", FoodModels.CrumbTexture()), Vector2.one);
+            Lit("Apple", Color.white, 0.72f, 0f, false, SaveTexture("Apple Skin", FoodModels.AppleTexture()), Vector2.one);
+            Lit("Banana", Color.white, 0.4f, 0f, false, SaveTexture("Banana Skin", FoodModels.BananaTexture()), Vector2.one);
+            Lit("Orange", Color.white, 0.45f, 0f, false, SaveTexture("Orange Peel", FoodModels.OrangeTexture()), new Vector2(2f, 2f));
+            Lit("Stem", new Color(0.33f, 0.24f, 0.12f), 0.2f);
+            Lit("Watermelon", new Color(0.93f, 0.24f, 0.28f), 0.55f);
+            Lit("RindWhite", new Color(0.86f, 0.92f, 0.72f), 0.4f);
+            Lit("RindGreen", new Color(0.1f, 0.33f, 0.12f), 0.55f);
+            Lit("Seed", new Color(0.07f, 0.05f, 0.04f), 0.75f);
 
             Unlit("Arrow", new Color(1f, 0.84f, 0.1f));
             Unlit("Tip", new Color(0.1f, 0.9f, 1f));
             Unlit("MirrorScreen", Color.white);
             Unlit("PhoneScreen", new Color(0.05f, 0.06f, 0.08f));
+            Unlit("TabletScreen", new Color(0.06f, 0.08f, 0.11f));
+            Unlit("Bulb", new Color(1f, 0.93f, 0.76f));
+            Unlit("WindowView", Color.white);
+            s_Mats["WindowView"].SetTexture("_BaseMap", SaveTexture("Window View", FoodModels.WindowViewTexture()));
 
             var line = GetOrCreateMaterial("Line", Shader.Find("Sprites/Default"));
             line.color = Color.white;
@@ -536,10 +558,12 @@ namespace T1DCGM.EditorTools
             return tex;
         }
 
-        static void Lit(string name, Color color, float smoothness, float metallic = 0f, bool transparent = false)
+        static void Lit(string name, Color color, float smoothness, float metallic = 0f, bool transparent = false, Texture2D texture = null, Vector2 tiling = default)
         {
             var m = GetOrCreateMaterial(name, Shader.Find("Universal Render Pipeline/Lit"));
             m.SetColor("_BaseColor", color);
+            m.SetTexture("_BaseMap", texture);
+            m.SetTextureScale("_BaseMap", texture != null && tiling != Vector2.zero ? tiling : Vector2.one);
             m.SetFloat("_Smoothness", smoothness);
             m.SetFloat("_Metallic", metallic);
             if (transparent)
@@ -557,6 +581,25 @@ namespace T1DCGM.EditorTools
                 m.SetShaderPassEnabled("DepthOnly", false);
                 m.SetShaderPassEnabled("ShadowCaster", false);
             }
+            EditorUtility.SetDirty(m);
+            s_Mats[name] = m;
+        }
+
+        /// <summary>Lit material that multiplies by vertex colour (baked shading between rice grains and pasta pieces).</summary>
+        static void VertexLit(string name, Color color, float smoothness)
+        {
+            var shader = Shader.Find("Universal Render Pipeline/Particles/Lit");
+            if (shader == null)
+            {
+                Lit(name, color, smoothness);
+                return;
+            }
+            var m = GetOrCreateMaterial(name, shader);
+            m.SetColor("_BaseColor", color);
+            m.SetFloat("_Smoothness", smoothness);
+            m.SetFloat("_Surface", 0f);
+            m.SetFloat("_Cull", (float)CullMode.Back);
+            m.renderQueue = (int)RenderQueue.Geometry;
             EditorUtility.SetDirty(m);
             s_Mats[name] = m;
         }

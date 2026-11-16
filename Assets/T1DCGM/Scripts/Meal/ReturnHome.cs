@@ -1,4 +1,3 @@
-using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.XR.Interaction.Toolkit.Interactables;
 
@@ -38,7 +37,6 @@ namespace T1DCGM
                 m_Body.angularVelocity = Vector3.zero;
             }
             transform.SetPositionAndRotation(m_Position, m_Rotation);
-            if (TryGetComponent<ServingSpoon>(out var spoon)) spoon.Empty();
         }
     }
 }

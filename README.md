@@ -14,15 +14,17 @@ Build the scenes with menu **T1D CGM > Build Demo Scenes** (regenerates both sce
   - Guidance tiers: Guided (virtual sleeve, green zone, mirror view of the back of the arm, haptics),
     Haptics only, No help.
   - Teleport to the LUNCH pad to go to scene 2.
-- **Scene 2, Lunch** (`Assets/T1DCGM/Scenes/Lunch.unity`, virtual cafeteria)
-  - Serve 50 g of carbs of rice, pasta and bread, by eye at real size. Scoop with a serving spoon; pick up bread.
-  - Answer shown at true scale next to your plate, with a 1 cup ball (about a fist).
-  - Afterwards the CGM (wall display and a phone) plays back 4 hours of readings for the meal you served.
+- **Scene 2, Lunch** (`Assets/T1DCGM/Scenes/Lunch.unity`, virtual cafeteria buffet)
+  - A tablet that follows your view gives short instructions (poke NEXT / BACK, or A / B).
+  - Part 1, guess: a bowl of rice and a bowl of penne, built grain by grain and piece by piece at real size.
+    Dial in a carb estimate (-5 / +5 / +10, LOCK IN); the answer appears as the same amount in measuring cups.
+  - Part 2, build: put bread, then fruit (banana, apple, orange, watermelon), on a plate until it holds 50 g.
+  - Every answer shows the insulin dose that estimate leads to (1 unit per 10 g) and the CGM trace over 4 hours.
 - **Passthrough prototype** (`Assets/T1DCGM/Scenes/PassthroughPrototype.unity`): passthrough status and a touch test.
 - Food models for the side table: low-poly food pack in `Assets/Food Pack-Demo`.
 
-Controls: GRIP pick up, TRIGGER press applicator, A continue / record touch, B recalibrate, X (left) bring the
-board in front of you, thumbstick forward to teleport, poke 3D buttons with the controller.
+Controls: GRIP pick up, TRIGGER press applicator, A continue / record touch, B recalibrate (scene 1) or back (scene 2),
+X (left) bring the board in front of you, thumbstick forward to teleport, poke 3D buttons with the controller.
 
 ## Requirements
 
