@@ -123,7 +123,7 @@ namespace T1DCGM
         /// </summary>
         public static float[] Simulate(float eatenCarbs, float dosedCarbs, float hours = 4f, float start = 110f)
         {
-            const float mgPerGram = 3f;          // correction factor / carb ratio, e.g. 45 mg/dL per unit, 1 unit per 15 g
+            const float mgPerGram = 3f;          // teaching model: glucose change per gram of carbs not matched by insulin
             const float carbTau = 40f, insulinTau = 55f;
             int n = Mathf.RoundToInt(hours * 60f / MinutesPerReading) + 1;
             var values = new float[n];

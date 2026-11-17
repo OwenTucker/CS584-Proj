@@ -27,9 +27,6 @@ namespace T1DCGM
         /// <summary>Watermelon flesh: 7.6 g carbs per 100 g, about 0.96 g per mL.</summary>
         public const float WatermelonCarbsPerMl = 0.073f;
 
-        /// <summary>Insulin-to-carb ratio used to turn a carb count into a dose (1 unit per 10 g, a common starting ratio).</summary>
-        public const float GramsPerUnit = 10f;
-
         /// <summary>"1 1/2 cups" style text for a number of cups, to the nearest quarter.</summary>
         public static string Cups(float cups)
         {

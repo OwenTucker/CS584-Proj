@@ -692,7 +692,7 @@ namespace T1DCGM.EditorTools
             const int rows = 40, around = 30;
             Vector3 Centre(float s) { float a = (s - 0.5f) * arc; return new Vector3(Rc * Mathf.Sin(a), 0f, Rc * (1f - Mathf.Cos(a))); }
             Vector3 Inward(float s) { float a = (s - 0.5f) * arc; return new Vector3(-Mathf.Sin(a), 0f, Mathf.Cos(a)); }
-            float Radius(float s) => Rmax * Mathf.Pow(Mathf.Sin(Mathf.PI * s), 0.5f) * (1f - 0.35f * Mathf.Exp(-((s - 0.05f) / 0.06f) * ((s - 0.05f) / 0.06f)));
+            float Radius(float s) => Rmax * Mathf.Pow(Mathf.Max(0f, Mathf.Sin(Mathf.PI * s)), 0.5f) * (1f - 0.35f * Mathf.Exp(-((s - 0.05f) / 0.06f) * ((s - 0.05f) / 0.06f)));
             var mb = new MeshBuilder();
             mb.Grid(rows, around, (r, c) =>
             {

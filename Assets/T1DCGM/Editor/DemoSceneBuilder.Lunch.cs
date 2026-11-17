@@ -111,9 +111,9 @@ namespace T1DCGM.EditorTools
             // Tiled splashback behind the buffet.
             var tile = Box("Splashback", shell, s_Mats["Tile"], new Vector3(0f, 1.25f, k_BackWall - 0.005f), new Vector3(4.2f, 0.9f, 0.01f), false);
             NoShadow(tile);
-            Window(shell, new Vector3(-side + 0.02f, 1.55f, -0.7f));
-            Window(shell, new Vector3(-side + 0.02f, 1.55f, -2.4f));
-            Chalkboard(shell, new Vector3(0f, 2.22f, k_BackWall - 0.02f));
+            Window(shell, new Vector3(-side + 0.03f, 1.78f, -0.7f));
+            Window(shell, new Vector3(-side + 0.03f, 1.78f, -2.4f));
+            Logo(shell, new Vector3(0f, 2.2f, k_BackWall));
 
             BuildBuffetCounter(env);
             for (int i = 0; i < k_StationX.Length; i++)
@@ -148,23 +148,85 @@ namespace T1DCGM.EditorTools
             view.transform.localRotation = Quaternion.Euler(0f, 180f, 0f);
             view.GetComponent<Renderer>().sharedMaterial = s_Mats["WindowView"];
             NoShadow(view);
-            NoShadow(Box("Frame Top", root, s_Mats["Trim"], new Vector3(0f, hgt / 2f, -0.02f), new Vector3(w + f, f, 0.05f), false));
-            NoShadow(Box("Frame Bottom", root, s_Mats["Trim"], new Vector3(0f, -hgt / 2f, -0.03f), new Vector3(w + 0.12f, f, 0.1f), false));
-            NoShadow(Box("Frame L", root, s_Mats["Trim"], new Vector3(-w / 2f, 0f, -0.02f), new Vector3(f, hgt, 0.05f), false));
-            NoShadow(Box("Frame R", root, s_Mats["Trim"], new Vector3(w / 2f, 0f, -0.02f), new Vector3(f, hgt, 0.05f), false));
-            NoShadow(Box("Mullion V", root, s_Mats["Trim"], new Vector3(0f, 0f, -0.015f), new Vector3(0.03f, hgt, 0.03f), false));
-            NoShadow(Box("Mullion H", root, s_Mats["Trim"], new Vector3(0f, 0.1f, -0.015f), new Vector3(w, 0.03f, 0.03f), false));
+            // Frames sit in front of the view (local +Z is into the room) so no two surfaces share a depth.
+            NoShadow(Box("Frame Top", root, s_Mats["Trim"], new Vector3(0f, hgt / 2f, 0.025f), new Vector3(w + f, f, 0.05f), false));
+            NoShadow(Box("Frame Bottom", root, s_Mats["Trim"], new Vector3(0f, -hgt / 2f, 0.045f), new Vector3(w + 0.12f, f, 0.09f), false));
+            NoShadow(Box("Frame L", root, s_Mats["Trim"], new Vector3(-w / 2f, 0f, 0.025f), new Vector3(f, hgt + 0.01f, 0.05f), false));
+            NoShadow(Box("Frame R", root, s_Mats["Trim"], new Vector3(w / 2f, 0f, 0.025f), new Vector3(f, hgt + 0.01f, 0.05f), false));
+            NoShadow(Box("Mullion V", root, s_Mats["Trim"], new Vector3(0f, 0f, 0.016f), new Vector3(0.03f, hgt - f, 0.03f), false));
+            NoShadow(Box("Mullion H", root, s_Mats["Trim"], new Vector3(0f, 0.1f, 0.012f), new Vector3(w - f, 0.024f, 0.024f), false));
         }
 
-        static void Chalkboard(Transform parent, Vector3 pos)
+        /// <summary>"VR-T1D" sign on the back wall: neon-style lettering and a blood-drop mark on a dark plate.</summary>
+        static void Logo(Transform parent, Vector3 wallPoint)
         {
-            var root = new GameObject("Menu Board").transform;
+            var root = new GameObject("VR-T1D Logo").transform;
             root.SetParent(parent, false);
-            root.localPosition = pos;
-            NoShadow(Box("Frame", root, s_Mats["Wood"], new Vector3(0f, 0f, 0.005f), new Vector3(1.5f, 0.6f, 0.03f), false));
-            NoShadow(Box("Board", root, s_Mats["Chalkboard"], new Vector3(0f, 0f, -0.012f), new Vector3(1.42f, 0.52f, 0.005f), false));
-            var t = Text3D("Menu", root, "<b>TODAY</b>\n<size=70%>rice  ·  penne  ·  bread  ·  fruit</size>", 1.2f, new Color(0.95f, 0.95f, 0.9f, 0.9f), new Vector2(1.3f, 0.45f));
-            t.transform.localPosition = new Vector3(0f, 0f, -0.016f);
+            root.localPosition = wallPoint;
+            const float w = 1.7f, h = 0.5f, d = 0.04f;
+            NoShadow(Part("Plate", root, SaveMesh("Logo_Plate", MeshFactory.RoundedBox("Logo_Plate", new Vector3(w, d, h), 0.08f)), s_Mats["LogoPlate"]))
+                .transform.SetLocalPositionAndRotation(new Vector3(0f, 0f, -d / 2f - 0.002f), Quaternion.Euler(90f, 0f, 0f));
+            NoShadow(Part("Edge Light", root, SaveMesh("Logo_Edge", MeshFactory.RoundedBox("Logo_Edge", new Vector3(w - 0.05f, 0.004f, h - 0.05f), 0.06f)), s_Mats["LogoEdge"]))
+                .transform.SetLocalPositionAndRotation(new Vector3(0f, 0f, -d - 0.004f), Quaternion.Euler(90f, 0f, 0f));
+            NoShadow(Part("Plate Face", root, SaveMesh("Logo_Face", MeshFactory.RoundedBox("Logo_Face", new Vector3(w - 0.07f, 0.004f, h - 0.07f), 0.05f)), s_Mats["LogoPlate"]))
+                .transform.SetLocalPositionAndRotation(new Vector3(0f, 0f, -d - 0.009f), Quaternion.Euler(90f, 0f, 0f));
+
+            // Blood drop: circle with a pointed top, extruded toward the room.
+            const float r = 0.085f, tip = 1.95f * r;
+            float tangent = Mathf.Acos(r / tip) * Mathf.Rad2Deg;
+            var outline = new List<Vector2>();
+            for (int i = 0; i <= 28; i++)
+            {
+                float a = Mathf.Lerp(90f + tangent, 450f - tangent, i / 28f) * Mathf.Deg2Rad;
+                outline.Add(new Vector2(Mathf.Cos(a), Mathf.Sin(a)) * r);
+            }
+            outline.Add(new Vector2(0f, tip));
+            NoShadow(Part("Drop", root, SaveMesh("Logo_Drop", FoodModels.Extrude(outline, 0.03f).ToMesh("Logo_Drop")), s_Mats["LogoDrop"]))
+                .transform.SetLocalPositionAndRotation(new Vector3(-0.58f, -0.06f, -d - 0.02f), Quaternion.Euler(-90f, 0f, 0f));
+
+            var text = Text3D("Wordmark", root, "<color=#62d6ff>VR</color><color=#ff5a6e>-</color>T1D", 3.4f, Color.white, new Vector2(1.15f, 0.4f));
+            text.fontStyle = FontStyles.Bold | FontStyles.Italic;
+            text.characterSpacing = 6f;
+            text.alignment = TextAlignmentOptions.Center;
+            var neon = NeonMaterial();
+            if (neon != null) text.fontSharedMaterial = neon;
+            text.enableAutoSizing = true;
+            text.fontSizeMin = 1.5f;
+            text.fontSizeMax = 3.4f;
+            text.transform.localPosition = new Vector3(0.14f, 0f, -d - 0.016f);
+        }
+
+        /// <summary>Copy of the font material with an outline and glow, for the neon lettering.</summary>
+        static Material NeonMaterial()
+        {
+            if (s_Font == null || s_Font.material == null)
+                return null;
+            var shader = Shader.Find("TextMeshPro/Distance Field");
+            if (shader == null)
+                return null;
+            string path = $"{k_Root}/Materials/LogoNeon.mat";
+            var m = AssetDatabase.LoadAssetAtPath<Material>(path);
+            if (m == null)
+            {
+                m = new Material(s_Font.material) { name = "LogoNeon" };
+                AssetDatabase.CreateAsset(m, path);
+            }
+            else
+            {
+                m.CopyPropertiesFromMaterial(s_Font.material);
+            }
+            m.shader = shader;
+            m.SetTexture("_MainTex", s_Font.material.GetTexture("_MainTex"));
+            m.EnableKeyword("GLOW_ON");
+            m.SetColor("_GlowColor", new Color(0.35f, 0.8f, 1f, 0.75f));
+            m.SetFloat("_GlowOffset", 0f);
+            m.SetFloat("_GlowInner", 0.05f);
+            m.SetFloat("_GlowOuter", 0.45f);
+            m.SetFloat("_GlowPower", 0.75f);
+            m.SetFloat("_OutlineWidth", 0.06f);
+            m.SetColor("_OutlineColor", new Color(0.2f, 0.65f, 1f, 1f));
+            EditorUtility.SetDirty(m);
+            return m;
         }
 
         static void BuildBuffetCounter(Transform env)
@@ -395,7 +457,7 @@ namespace T1DCGM.EditorTools
                     food = food, halfSize = r + 0.004f, cell = food == FoodModels.PileFood.Rice ? 0.0015f : 0.002f,
                     floor = (px, pz) => px * px + pz * pz > r * r ? float.PositiveInfinity : 0.0015f,
                     targetMl = ml, spread = 0f, containerRadius = r, repose = 25f, seed = 3 + (int)(size * 8f),
-                    maxTop = 0.0015f + depth + (food == FoodModels.PileFood.Rice ? 0.003f : 0.008f),
+                    maxTop = 0.0015f + depth + (food == FoodModels.PileFood.Rice ? 0.003f : 0.014f),
                 });
                 AddPile(cup, pile, food == FoodModels.PileFood.Rice ? s_Mats["RiceGrain"] : s_Mats["Penne"], s_Mats["RiceCore"]);
                 z -= 0.12f;
@@ -406,10 +468,10 @@ namespace T1DCGM.EditorTools
 
         // ------------------------------------------------------------------ build stations (pieces)
 
-        static BuildStation BuildStationBase(Transform root, string food, string lesson)
+        static BuildStation BuildStationBase(Transform root, string food)
         {
             var plate = BuildPlate(root, new Vector3(0f, 0f, 0.4f));
-            var b = new BuildStation { foodName = food, plate = plate, lesson = lesson };
+            var b = new BuildStation { foodName = food, root = root, plate = plate };
             b.doneButton = PokeButton("Done Button", root, new Vector3(0.24f, 0f, 0.27f), "DONE", s_Mats["Green"], out var doneLabel);
             b.doneLabel = doneLabel;
             b.resetButton = PokeButton("Reset Button", root, new Vector3(-0.24f, 0f, 0.27f), "RESET", s_Mats["Red"], out _);
@@ -430,7 +492,7 @@ namespace T1DCGM.EditorTools
             for (int i = 0; i < 2; i++)
                 Bagel(root, new Vector3(0.16f, 0.02f + 0.033f * i, 0.68f));
 
-            return BuildStationBase(root, "bread", "50 g is 1 bagel, 2 thick slices, or 3 1/2 sandwich slices.");
+            return BuildStationBase(root, "bread");
         }
 
         static BuildStation FruitStation(Transform env, float x)
@@ -445,14 +507,12 @@ namespace T1DCGM.EditorTools
             Apple(root, new Vector3(-0.03f, top, 0.74f), 140f);
             Orange(root, new Vector3(0.08f, top, 0.61f));
             Orange(root, new Vector3(0.08f, top, 0.74f));
-            float wedge = 0f;
             for (int i = 0; i < 2; i++)
             {
-                wedge = Watermelon(root, new Vector3(0.23f, top + 0.0125f + 0.0255f * i, 0.62f), 180f);
+                Watermelon(root, new Vector3(0.23f, top + 0.0125f + 0.0255f * i, 0.62f), 180f);
                 Watermelon(root, new Vector3(0.23f, top + 0.0125f + 0.0255f * i, 0.76f), 0f);
             }
-            int wedges = Mathf.RoundToInt(FoodData.TargetCarbs / Mathf.Max(1f, wedge));
-            return BuildStationBase(root, "fruit", $"50 g is 2 apples, about 2 bananas, 3 oranges, or {wedges} watermelon wedges.");
+            return BuildStationBase(root, "fruit");
         }
 
         static Plate BuildPlate(Transform parent, Vector3 localPosition)
@@ -660,9 +720,11 @@ namespace T1DCGM.EditorTools
         {
             const float W = 0.3f, H = 0.2f;
             var root = new GameObject("Tablet (follows your view)");
-            root.transform.position = head.position + new Vector3(-0.16f, 1.36f, 0.45f);
             var follow = root.AddComponent<FollowHead>();
             follow.head = head;
+            follow.offset = new Vector3(0f, -0.17f, 0.4f); // straight ahead, just below eye level, in front of the sneeze guard
+            follow.minHeight = 1.3f;                       // stays clear of the food and the counter
+            root.transform.position = head.parent != null ? new Vector3(head.position.x, 1.45f, head.position.z + 0.4f) : head.position;
             var tablet = root.AddComponent<InfoTablet>();
 
             var frame = Part("Frame", root.transform, SaveMesh("Tablet_Frame", MeshFactory.RoundedBox("Tablet_Frame", new Vector3(W + 0.02f, 0.01f, H + 0.02f), 0.014f)), s_Mats["Dark"]);
@@ -721,7 +783,8 @@ namespace T1DCGM.EditorTools
 
             tablet.nextButton = TabletButton(root.transform, "Next Button", new Vector3(W / 2f - 0.05f, -H / 2f - 0.045f, 0f), "NEXT", s_Mats["Green"], out var nextLabel);
             tablet.nextLabel = nextLabel;
-            tablet.backButton = TabletButton(root.transform, "Back Button", new Vector3(-W / 2f + 0.05f, -H / 2f - 0.045f, 0f), "BACK", s_Mats["Grey"], out _);
+            tablet.backButton = TabletButton(root.transform, "Back Button", new Vector3(-W / 2f + 0.05f, -H / 2f - 0.045f, 0f), "BACK", s_Mats["Grey"], out var backLabel);
+            tablet.backLabel = backLabel;
             return tablet;
         }
 

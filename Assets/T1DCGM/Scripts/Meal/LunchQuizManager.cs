@@ -21,23 +21,22 @@ namespace T1DCGM
         public GameObject reveal;
     }
 
-    /// <summary>The learner puts pieces on a plate until they think it holds 50 g of carbs.</summary>
+    /// <summary>The learner puts pieces on a plate until they think it holds a random carb target.</summary>
     [System.Serializable]
     public class BuildStation
     {
         public string foodName = "bread";
+        [Tooltip("Station root: the food pieces (CarbItem) under it are used to explain what the target looks like.")]
+        public Transform root;
         public Plate plate;
         public PressButton3D doneButton, resetButton;
         public TMP_Text doneLabel;
-        [Tooltip("One line shown with the answer, e.g. what 50 g looks like.")]
-        public string lesson;
-        public GameObject reveal;
     }
 
     /// <summary>
     /// Lunch challenge. Part 1: estimate the carbs in dishes already served (rice, pasta), the way most meals are
-    /// counted. Part 2: build a 50 g plate from pieces (bread, fruit). Each answer shows the insulin dose that guess
-    /// leads to and the CGM trace that follows; the tablet in the left hand carries all the text.
+    /// counted. Part 2: build a plate to a random carb target from pieces (bread, fruit). Each answer says which way the
+    /// estimate was off and plays the CGM trace that follows. No doses are shown: the point is the direction of the error.
     /// </summary>
     public class LunchQuizManager : MonoBehaviour
     {
@@ -48,6 +47,8 @@ namespace T1DCGM
         public AudioSource audioSource;
         public TMP_FontAsset labelFont;
         public float guessStart = 0f;
+        [Tooltip("Build targets are drawn at random from this range, in steps of 5 g.")]
+        public int minTarget = 25, maxTarget = 100;
 
         enum Phase { Intro = 0, Guess = 1, GuessResult = 2, Build = 3, BuildResult = 4, Summary = 5 }
 
@@ -56,6 +57,7 @@ namespace T1DCGM
         Phase m_Phase;
         int m_Page, m_Round;
         float m_Guess;
+        float[] m_Targets;
         readonly List<Result> m_Results = new List<Result>();
         readonly List<GameObject> m_Labels = new List<GameObject>();
         InputAction m_Next, m_Back;
@@ -67,11 +69,11 @@ namespace T1DCGM
             ("Lunch with type 1 diabetes",
              "Before you eat, you count the carbs and take insulin to match.\n\nThere is rarely a label or a scale. You judge by eye."),
             ("Why the count matters",
-             "Insulin is dosed per gram of carbs, often 1 unit per 10 g.\n\nGuess low: glucose runs high for hours.\nGuess high: it can drop dangerously low."),
+             "Your insulin is based on your carb count.\n\n<b>Count too low:</b> blood glucose runs high.\n<b>Count too high:</b> it can drop too low."),
             ("Part 1: Guess",
              "Two dishes are already served.\n\nLook closely at real size, then dial in your carb estimate."),
             ("Part 2: Build",
-             "Fill a plate with bread, then with fruit, until you think it holds <b>50 g</b> of carbs."),
+             "Fill a plate with bread, then with fruit, until you think it holds the carb target on this tablet."),
             ("Controls",
              "Thumbstick forward: teleport\nGrip: pick up food\nFingertip: poke buttons\nA: next    B: back"),
         };
@@ -130,9 +132,11 @@ namespace T1DCGM
                 if (g.reveal != null) g.reveal.SetActive(false);
                 if (g.readout != null) g.readout.text = "";
             }
-            foreach (var b in buildStations)
+            m_Targets = new float[buildStations.Count];
+            for (int i = 0; i < buildStations.Count; i++)
             {
-                if (b.reveal != null) b.reveal.SetActive(false);
+                m_Targets[i] = 5f * Random.Range(minTarget / 5, maxTarget / 5 + 1);
+                var b = buildStations[i];
                 if (b.doneLabel != null) b.doneLabel.text = "<b>DONE</b>";
             }
             ShowPage(0);
@@ -158,8 +162,7 @@ namespace T1DCGM
                     else ShowSummary();
                     break;
                 case Phase.Summary:
-                    var scene = UnityEngine.SceneManagement.SceneManager.GetActiveScene();
-                    UnityEngine.SceneManagement.SceneManager.LoadScene(scene.buildIndex >= 0 ? scene.buildIndex : 0);
+                    PlayAgain();
                     break;
             }
         }
@@ -168,6 +171,15 @@ namespace T1DCGM
         {
             if (m_Phase == Phase.Intro && m_Page > 0)
                 ShowPage(m_Page - 1);
+            else if (m_Phase == Phase.GuessResult || m_Phase == Phase.BuildResult)
+                tablet.Replay();
+        }
+
+        /// <summary>Starts the whole lunch again, with new build targets.</summary>
+        public void PlayAgain()
+        {
+            var scene = UnityEngine.SceneManagement.SceneManager.GetActiveScene();
+            UnityEngine.SceneManagement.SceneManager.LoadScene(scene.buildIndex >= 0 ? scene.buildIndex : 0);
         }
 
         void ShowPage(int page)
@@ -178,7 +190,7 @@ namespace T1DCGM
             if (page == 0 && CgmSession.applied)
                 body = "Your new CGM is reading every 5 minutes.\n\n" + body;
             bool last = page == k_Intro.Length - 1;
-            tablet.Show(title, body, Dots(page, k_Intro.Length), last ? "START" : "NEXT", page > 0);
+            tablet.Show(title, body, Dots(page, k_Intro.Length), last ? "START" : "NEXT", page > 0 ? "BACK" : null);
             arrow.SetTarget(null);
         }
 
@@ -193,17 +205,18 @@ namespace T1DCGM
                 UpdateReadout(g);
                 tablet.Show($"Guess {round + 1} of {guessStations.Count}: {Capital(g.foodName)}",
                     $"How many grams of carbs are in this {g.foodName}?\n\nSet your estimate with the buttons, then poke <b>LOCK IN</b>.",
-                    RoundCounter(round), "", false);
+                    RoundCounter(round), "", null);
                 arrow.SetTarget(g.focus);
             }
             else
             {
                 m_Phase = Phase.Build;
-                var b = buildStations[round - guessStations.Count];
+                int i = round - guessStations.Count;
+                var b = buildStations[i];
                 if (b.doneLabel != null) b.doneLabel.text = "<b>DONE</b>";
-                tablet.Show($"Build a 50 g plate: {Capital(b.foodName)}",
-                    $"Put {b.foodName} on the plate until you think it holds <b>50 g</b> of carbs.\n\nPoke <b>DONE</b> when it looks right.",
-                    RoundCounter(round), "", false);
+                tablet.Show($"Build a {m_Targets[i]:0} g plate: {Capital(b.foodName)}",
+                    $"Put {b.foodName} on the plate until you think it holds <b>{m_Targets[i]:0} g</b> of carbs.\n\nPoke <b>DONE</b> when it looks right.",
+                    RoundCounter(round), "", null);
                 arrow.SetTarget(b.plate.transform);
             }
             Play(ToneLibrary.Click());
@@ -233,7 +246,7 @@ namespace T1DCGM
             var sb = new StringBuilder();
             sb.Append($"This is <b>{g.amountText}</b> of {g.foodName}: <b>{g.actualCarbs:0} g</b>. You guessed {m_Guess:0} g");
             sb.Append(Mathf.Abs(miss) < 2.5f ? ", spot on." : miss < 0f ? $", <b>{-miss:0} g low</b>." : $", <b>{miss:0} g high</b>.");
-            sb.Append("\n").Append(DoseLine(m_Guess, g.actualCarbs));
+            sb.Append("\n").Append(Effect(m_Guess, g.actualCarbs));
             ShowResult(Header(miss), sb.ToString(), CgmGraph.Simulate(g.actualCarbs, m_Guess), miss);
             arrow.SetTarget(null);
         }
@@ -246,6 +259,7 @@ namespace T1DCGM
             if (m_Phase != Phase.Build) return;
 
             var b = buildStations[index];
+            float target = m_Targets[index];
             var items = b.plate.ItemsOnPlate();
             float carbs = 0f;
             var counts = new SortedDictionary<string, (int n, float each)>();
@@ -255,20 +269,19 @@ namespace T1DCGM
                 counts[item.displayName] = counts.TryGetValue(item.displayName, out var c) ? (c.n + 1, item.carbs) : (1, item.carbs);
                 Label(item.transform, $"{item.carbs:0} g");
             }
-            m_Results.Add(new Result { food = b.foodName, estimate = FoodData.TargetCarbs, actual = carbs });
-            if (b.reveal != null) b.reveal.SetActive(true);
+            m_Results.Add(new Result { food = b.foodName, estimate = target, actual = carbs });
             if (b.doneLabel != null) b.doneLabel.text = "<b>NEXT</b>";
             m_Phase = Phase.BuildResult;
 
-            float miss = FoodData.TargetCarbs - carbs; // dosing 50 g for what is on the plate
+            float miss = target - carbs; // counted the target, ate what is on the plate
             var sb = new StringBuilder();
             if (items.Count == 0) sb.Append("Your plate was empty. ");
             var parts = new List<string>();
-            foreach (var kv in counts) parts.Add($"{kv.Value.n} {kv.Key.ToLowerInvariant()}{(kv.Value.n > 1 ? "s" : "")} ({kv.Value.each:0} g)");
+            foreach (var kv in counts) parts.Add($"{kv.Value.n} {Plural(kv.Key.ToLowerInvariant(), kv.Value.n)} ({kv.Value.each:0} g)");
             if (parts.Count > 0) sb.Append(string.Join(", ", parts)).Append(". ");
-            sb.Append(b.lesson);
-            sb.Append("\n").Append(DoseLine(FoodData.TargetCarbs, carbs));
-            ShowResult($"Your plate: {carbs:0} g", sb.ToString(), CgmGraph.Simulate(carbs, FoodData.TargetCarbs), miss);
+            sb.Append(Lesson(b, target));
+            sb.Append("\n").Append(Effect(target, carbs));
+            ShowResult($"Your plate: {carbs:0} g (target {target:0} g)", sb.ToString(), CgmGraph.Simulate(carbs, target), miss);
         }
 
         void OnReset(int index)
@@ -280,7 +293,8 @@ namespace T1DCGM
         void ShowResult(string title, string body, float[] readings, float miss)
         {
             bool close = Mathf.Abs(miss) <= 7.5f;
-            tablet.Show(title, body, RoundCounter(m_Round) + "    CGM, 4 hours after eating", m_Round + 1 < Rounds ? "NEXT" : "RESULTS", false, readings);
+            tablet.Show(title, body, RoundCounter(m_Round) + "    CGM, 4 hours after eating",
+                m_Round + 1 < Rounds ? "NEXT" : "RESULTS", "REPLAY", readings);
             Play(close ? ToneLibrary.Success() : ToneLibrary.Error());
         }
 
@@ -289,15 +303,20 @@ namespace T1DCGM
             m_Phase = Phase.Summary;
             var sb = new StringBuilder();
             float totalMiss = 0f;
+            int low = 0, high = 0;
             foreach (var r in m_Results)
             {
                 float miss = r.estimate - r.actual;
                 totalMiss += Mathf.Abs(miss);
-                sb.AppendLine($"{Capital(r.food)}: dosed for {r.estimate:0} g, ate {r.actual:0} g");
+                if (miss < -7.5f) low++;
+                else if (miss > 7.5f) high++;
+                sb.AppendLine($"{Capital(r.food)}: counted {r.estimate:0} g, ate {r.actual:0} g");
             }
             float avg = m_Results.Count > 0 ? totalMiss / m_Results.Count : 0f;
-            sb.Append($"\nAverage miss: <b>{avg:0} g</b>, about {avg / FoodData.GramsPerUnit:0.#} units of insulin per meal.");
-            tablet.Show("Lunch results", sb.ToString(), "", "AGAIN", false);
+            sb.Append($"\nAverage miss: <b>{avg:0} g</b> per meal.");
+            if (low > 0) sb.Append($" {low} counted low (glucose high).");
+            if (high > 0) sb.Append($" {high} counted high (glucose low).");
+            tablet.Show("Lunch results", sb.ToString(), "", "PLAY AGAIN", null);
             arrow.SetTarget(null);
             Play(ToneLibrary.Finish());
         }
@@ -305,18 +324,43 @@ namespace T1DCGM
         // ------------------------------------------------------------------ text
 
         static string Header(float miss) =>
-            Mathf.Abs(miss) <= 7.5f ? "Close estimate" : miss < 0f ? "Underestimated" : "Overestimated";
+            Mathf.Abs(miss) <= 7.5f ? "Close estimate" : miss < 0f ? "Counted too low" : "Counted too high";
 
-        /// <summary>What a guess means for the dose, and what the CGM will show.</summary>
-        static string DoseLine(float dosedFor, float ate)
+        /// <summary>Which way the count was off and what that does to glucose (no doses).</summary>
+        static string Effect(float counted, float ate)
         {
-            float units = dosedFor / FoodData.GramsPerUnit, needed = ate / FoodData.GramsPerUnit;
-            float miss = dosedFor - ate;
-            string effect = Mathf.Abs(miss) <= 7.5f ? "Glucose stays near range."
-                : miss < 0f ? "Too little insulin: glucose runs high."
-                : "Too much insulin: glucose drops low.";
-            return $"Dose: {units:0.#} units, needed {needed:0.#}. {effect}";
+            float miss = counted - ate;
+            if (Mathf.Abs(miss) <= 7.5f) return "Close count: glucose should stay near range.";
+            return miss < 0f
+                ? "Counted low: the insulin covers less than you ate, so glucose runs high."
+                : "Counted high: the insulin covers more than you ate, so glucose can drop low.";
         }
+
+        /// <summary>"40 g is about 3 sandwich slices, 2 thick slices, or 1 bagel." from the pieces at the station.</summary>
+        static string Lesson(BuildStation b, float target)
+        {
+            if (b.root == null) return "";
+            var kinds = new Dictionary<string, float>();
+            foreach (var item in b.root.GetComponentsInChildren<CarbItem>(true))
+                if (item.carbs > 0f) kinds[item.displayName] = item.carbs;
+            var list = new List<KeyValuePair<string, float>>(kinds);
+            list.Sort((a, c) => a.Value.CompareTo(c.Value));
+            var parts = new List<string>();
+            foreach (var kv in list)
+            {
+                float halves = Mathf.Round(target / kv.Value * 2f);
+                if (halves < 1f) continue;
+                int whole = (int)(halves / 2f);
+                bool half = halves % 2f > 0.5f;
+                string amount = whole == 0 ? "1/2" : half ? $"{whole} 1/2" : $"{whole}";
+                parts.Add($"{amount} {Plural(kv.Key.ToLowerInvariant(), halves > 2f ? 2 : 1)}");
+            }
+            if (parts.Count == 0) return "";
+            if (parts.Count > 1) parts[parts.Count - 1] = "or " + parts[parts.Count - 1];
+            return $"{target:0} g is about {string.Join(", ", parts)}.";
+        }
+
+        static string Plural(string name, int n) => n > 1 && !name.EndsWith("s") ? name + "s" : name;
 
         string RoundCounter(int round) => $"{round + 1} / {Rounds}";
 

@@ -3,14 +3,16 @@ using UnityEngine;
 namespace T1DCGM
 {
     /// <summary>
-    /// Keeps a panel at a comfortable spot below and to the side of the view. It stays still while the user glances
+    /// Keeps a panel in front of the view, a little below eye level and above tables. It stays still while the user glances
     /// around (so it can be poked) and glides back when they turn or walk away.
     /// </summary>
     public class FollowHead : MonoBehaviour
     {
         public Transform head;
         [Tooltip("Offset in the head's yaw frame: x right, y up, z forward.")]
-        public Vector3 offset = new Vector3(-0.16f, -0.24f, 0.45f);
+        public Vector3 offset = new Vector3(0f, -0.17f, 0.4f);
+        [Tooltip("Never lower than this (m above the floor), so it stays clear of tables and counters.")]
+        public float minHeight = 1.3f;
         public float angleThreshold = 30f;
         public float distanceThreshold = 0.25f;
         public float speed = 5f;
@@ -32,6 +34,7 @@ namespace T1DCGM
             if (forward.sqrMagnitude < 1e-4f) forward = Vector3.ProjectOnPlane(head.up, Vector3.up);
             var yaw = Quaternion.LookRotation(forward.normalized, Vector3.up);
             var target = head.position + yaw * offset;
+            target.y = Mathf.Max(target.y, minHeight);
 
             var toPanel = Vector3.ProjectOnPlane(transform.position - head.position, Vector3.up);
             float angle = Vector3.Angle(toPanel, yaw * new Vector3(offset.x, 0f, offset.z));
@@ -54,7 +57,8 @@ namespace T1DCGM
             if (head == null) return;
             var forward = Vector3.ProjectOnPlane(head.forward, Vector3.up);
             if (forward.sqrMagnitude < 1e-4f) return;
-            transform.position = head.position + Quaternion.LookRotation(forward.normalized, Vector3.up) * offset;
+            var p = head.position + Quaternion.LookRotation(forward.normalized, Vector3.up) * offset;
+            transform.position = new Vector3(p.x, Mathf.Max(p.y, minHeight), p.z);
         }
     }
 }

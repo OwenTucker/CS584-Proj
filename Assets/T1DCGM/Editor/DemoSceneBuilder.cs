@@ -490,7 +490,8 @@ namespace T1DCGM.EditorTools
             Lit("Trim", new Color(0.95f, 0.94f, 0.9f), 0.4f);
             Lit("Ceiling", new Color(0.95f, 0.95f, 0.93f), 0.1f);
             Lit("Tile", Color.white, 0.75f, 0f, false, SaveTexture("Subway Tile", FoodModels.TileTexture()), new Vector2(14f, 1.5f));
-            Lit("Chalkboard", new Color(0.13f, 0.17f, 0.15f), 0.1f);
+            Lit("LogoPlate", new Color(0.07f, 0.09f, 0.14f), 0.75f);
+            Lit("LogoDrop", new Color(0.86f, 0.1f, 0.17f), 0.92f);
             Lit("Glass", new Color(0.85f, 0.93f, 1f, 0.14f), 0.95f, 0f, true);
             Lit("Pad", new Color(0.35f, 0.65f, 0.95f, 0.3f), 0.5f, 0f, true);
             Lit("LampShade", new Color(0.13f, 0.28f, 0.22f), 0.65f, 0.3f);
@@ -519,6 +520,7 @@ namespace T1DCGM.EditorTools
             Unlit("PhoneScreen", new Color(0.05f, 0.06f, 0.08f));
             Unlit("TabletScreen", new Color(0.06f, 0.08f, 0.11f));
             Unlit("Bulb", new Color(1f, 0.93f, 0.76f));
+            Unlit("LogoEdge", new Color(0.35f, 0.8f, 1f));
             Unlit("WindowView", Color.white);
             s_Mats["WindowView"].SetTexture("_BaseMap", SaveTexture("Window View", FoodModels.WindowViewTexture()));
 
