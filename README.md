@@ -4,7 +4,8 @@ Mixed-reality trainer for type 1 diabetes: applying a CGM sensor to your own arm
 
 ## What has been made
 
-Build the scenes with menu **T1D CGM > Build Demo Scenes** (regenerates both scenes and the build list).
+Build the scenes with menu **T1D CGM > Build Demo Scenes** (regenerates both scenes and the build list). The
+generated scenes, meshes, materials, textures and font are not in git (see `.gitignore`), so run it after every pull.
 
 - **Scene 1, CGM application** (`Assets/T1DCGM/Scenes/CGMApplication.unity`, mixed reality / passthrough)
   - Intro: what a CGM is (a glucose reading every 5 minutes).
