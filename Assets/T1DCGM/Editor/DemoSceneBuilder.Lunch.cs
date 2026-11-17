@@ -336,19 +336,8 @@ namespace T1DCGM.EditorTools
                 targetMl = 1.5f * FoodData.CupMl, spread = 0.03f, containerRadius = FoodModels.RiceBowlInner, repose = 42f, seed = 17,
             });
             AddPile(dish, pile, s_Mats["RiceGrain"], s_Mats["RiceCore"]);
-            float cups = pile.volumeMl / FoodData.CupMl;
-
-            var g = new GuessStation
-            {
-                foodName = "rice",
-                actualCarbs = Mathf.Round(cups * FoodData.RiceCarbsPerCup),
-                amountText = FoodData.Cups(cups),
-                focus = dish,
-                dock = TabletDock(root),
-            };
-            ChafingDish(root, "Steamed rice");
-            g.reveal = CupsReveal(root, FoodModels.PileFood.Rice, cups, g.amountText);
-            return g;
+            return FinishGuessStation(root, dish, "rice", "Steamed rice", FoodModels.PileFood.Rice, pile.volumeMl, FoodData.RiceCarbsPerCup,
+                new Vector3(0f, 0.04f, 0f), new Vector3(0.138f, 0.08f, 0.138f), 0.45f);
         }
 
         static GuessStation GuessStationPasta(Transform env, float x)
@@ -364,18 +353,37 @@ namespace T1DCGM.EditorTools
                 targetMl = 2.5f * FoodData.CupMl, spread = 0.05f, containerRadius = FoodModels.PastaBowlInner, repose = 28f, seed = 5,
             });
             AddPile(dish, pile, s_Mats["Penne"], null);
-            float cups = pile.volumeMl / FoodData.CupMl;
+            return FinishGuessStation(root, dish, "penne", "Penne", FoodModels.PileFood.Penne, pile.volumeMl, FoodData.PastaCarbsPerCup,
+                new Vector3(0f, 0.035f, 0f), new Vector3(0.262f, 0.07f, 0.262f), 0.7f);
+        }
+
+        /// <summary>
+        /// Shared part of a guess station: the served amount to the nearest quarter cup (so "per cup x cups" adds up
+        /// exactly), a grabbable bowl, the measuring-cup answer, a tablet dock and a RESTART button.
+        /// </summary>
+        static GuessStation FinishGuessStation(Transform root, Transform dish, string food, string cardName, FoodModels.PileFood pileFood,
+            float volumeMl, float carbsPerCup, Vector3 colliderCentre, Vector3 colliderSize, float mass)
+        {
+            float cups = Mathf.Round(volumeMl / FoodData.CupMl * 4f) / 4f;
+            var col = dish.gameObject.AddComponent<BoxCollider>();
+            col.center = colliderCentre;
+            col.size = colliderSize;
+            Grab(dish.gameObject, col, mass).useDynamicAttach = true; // held where it is grabbed
+            dish.gameObject.AddComponent<ReturnHome>();
 
             var g = new GuessStation
             {
-                foodName = "penne",
-                actualCarbs = Mathf.Round(cups * FoodData.PastaCarbsPerCup),
+                foodName = food,
+                carbsPerCup = carbsPerCup,
+                actualCarbs = Mathf.Floor(cups * carbsPerCup + 0.5f),
                 amountText = FoodData.Cups(cups),
+                root = root,
                 focus = dish,
                 dock = TabletDock(root),
             };
-            ChafingDish(root, "Penne");
-            g.reveal = CupsReveal(root, FoodModels.PileFood.Penne, cups, g.amountText);
+            ChafingDish(root, cardName);
+            g.reveal = CupsReveal(root, pileFood, cups, carbsPerCup, g.amountText, g.actualCarbs);
+            g.restartButton = PokeButton("Restart Button", root, new Vector3(0.24f, 0f, 0.27f), "RESTART", s_Mats["Blue"], out _);
             return g;
         }
 
@@ -428,7 +436,7 @@ namespace T1DCGM.EditorTools
         }
 
         /// <summary>Answer for a served dish: the same amount in measuring cups (full cups plus a part cup).</summary>
-        static GameObject CupsReveal(Transform root, FoodModels.PileFood food, float cups, string amountText)
+        static GameObject CupsReveal(Transform root, FoodModels.PileFood food, float cups, float carbsPerCup, string amountText, float totalCarbs)
         {
             var reveal = new GameObject("Answer: measuring cups").transform;
             reveal.SetParent(root, false);
@@ -440,6 +448,7 @@ namespace T1DCGM.EditorTools
             else if (left >= 0.125f) sizes.Add(0.25f);
 
             float z = (sizes.Count - 1) * 0.06f;
+            int index = 0;
             foreach (float size in sizes)
             {
                 float ml = size * FoodData.CupMl;
@@ -457,9 +466,19 @@ namespace T1DCGM.EditorTools
                     maxTop = 0.0015f + depth + (food == FoodModels.PileFood.Rice ? 0.003f : 0.014f),
                 });
                 AddPile(cup, pile, food == FoodModels.PileFood.Rice ? s_Mats["RiceGrain"] : s_Mats["Penne"], s_Mats["RiceCore"]);
+
+                // Each cup can be picked up, and says what it holds; heights are staggered so the labels don't overlap.
+                var col = cup.gameObject.AddComponent<BoxCollider>();
+                col.center = new Vector3(0f, (depth + 0.003f) / 2f, 0f);
+                col.size = new Vector3(2f * r + 0.006f, depth + 0.003f, 2f * r + 0.006f);
+                Grab(cup.gameObject, col, 0.15f).useDynamicAttach = true;
+                cup.gameObject.AddComponent<ReturnHome>();
+                string name = size >= 1f ? "1 cup" : size >= 0.5f ? "1/2 cup" : "1/4 cup";
+                Label(cup, $"{name}: {Mathf.Floor(size * carbsPerCup + 0.5f):0} g", new Vector3(0f, 0.07f + 0.03f * index, 0f), 0.13f, Color.white, true);
+                index++;
                 z -= 0.12f;
             }
-            Label(reveal, $"= {amountText}", new Vector3(0f, 0.16f, 0f), 0.2f, new Color(1f, 0.84f, 0.25f), true);
+            Label(reveal, $"{amountText} = {totalCarbs:0} g", new Vector3(0f, 0.08f + 0.03f * sizes.Count, 0f), 0.2f, new Color(1f, 0.84f, 0.25f), true);
             return reveal.gameObject;
         }
 
@@ -547,7 +566,7 @@ namespace T1DCGM.EditorTools
             var item = root.AddComponent<CarbItem>();
             item.displayName = displayName;
             item.carbs = carbs;
-            root.AddComponent<ReturnHome>();
+            root.AddComponent<ReturnHome>().restock = true; // an endless supply: taking one leaves another
             return root;
         }
 

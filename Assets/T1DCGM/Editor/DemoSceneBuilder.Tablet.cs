@@ -52,7 +52,7 @@ namespace T1DCGM.EditorTools
             tablet.fullWidth = W - 2f * k_TabPad;
             tablet.splitWidth = 0.15f;
             tablet.fullHeight = 0.15f;
-            tablet.bandHeight = 0.034f;
+            tablet.bandHeight = 0.042f;
             var body = TabText(t, "Body", "", 0.09f, Color.white, new Vector2(tablet.fullWidth, tablet.fullHeight), new Vector2(0f, tablet.bodyTop), TextAlignmentOptions.TopLeft);
             body.textWrappingMode = TextWrappingModes.Normal;
             body.enableAutoSizing = true;

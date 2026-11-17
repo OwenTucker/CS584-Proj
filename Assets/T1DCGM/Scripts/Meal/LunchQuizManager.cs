@@ -12,13 +12,18 @@ namespace T1DCGM
     {
         public string foodName = "rice";
         public float actualCarbs;
+        [Tooltip("Carbs in one cup of this food.")]
+        public float carbsPerCup;
         [Tooltip("The serving in everyday units, e.g. \"1 1/2 cups\".")]
         public string amountText;
+        [Tooltip("Station root: grabbable pieces under it go back to their spots on RESTART.")]
+        public Transform root;
         public Transform focus;
         [Tooltip("Where the tablet parks during this round (above the dish).")]
         public Transform dock;
         [Tooltip("Shown with the answer: measuring cups holding the same serving.")]
         public GameObject reveal;
+        public PressButton3D restartButton;
     }
 
     /// <summary>The learner puts pieces on a plate until they think it holds a random carb target.</summary>
@@ -74,10 +79,10 @@ namespace T1DCGM
              "Insulin is matched to the carbs you count.\n\n<b>Count too low:</b> glucose goes high.\n<b>Count too high:</b> it can drop low.",
              "count"),
             ("Part 1: Guess",
-             "Two dishes are already served.\n\nLook closely, then dial in your carb estimate on this tablet.",
+             "Two dishes are already served. Pick them up and look closely.\n\nThen dial in your carb estimate on this tablet.",
              "guess-intro"),
             ("Part 2: Build",
-             "Fill a plate with bread, then with fruit, until you think it holds the carb target.",
+             "Fill a plate with bread, then with fruit, until you think it holds the carb target.\n\nThere is plenty: take a piece and another appears.",
              "build-intro"),
             ("Controls", "", "controls"),
         };
@@ -88,11 +93,17 @@ namespace T1DCGM
         {
             m_Next = XRInput.Button("Next", "<XRController>{RightHand}/primaryButton", "<Keyboard>/space");
             m_Back = XRInput.Button("Back", "<XRController>{RightHand}/secondaryButton", "<Keyboard>/backspace");
+            for (int i = 0; i < guessStations.Count; i++)
+            {
+                int round = i;
+                var g = guessStations[i];
+                if (g.restartButton != null) g.restartButton.onPressed.AddListener(() => Restart(round));
+            }
             for (int i = 0; i < buildStations.Count; i++)
             {
-                int index = i;
+                int round = guessStations.Count + i;
                 var b = buildStations[i];
-                if (b.restartButton != null) b.restartButton.onPressed.AddListener(() => Restart(index));
+                if (b.restartButton != null) b.restartButton.onPressed.AddListener(() => Restart(round));
             }
             if (tablet != null)
             {
@@ -202,6 +213,7 @@ namespace T1DCGM
             {
                 m_Phase = Phase.Guess;
                 var g = guessStations[round];
+                if (g.reveal != null) g.reveal.SetActive(false);
                 m_Guess = guessStart;
                 tablet.Show($"Guess {round + 1} of {guessStations.Count}: {Capital(g.foodName)}",
                     $"How many grams of carbs are in this bowl of {g.foodName}?",
@@ -242,8 +254,13 @@ namespace T1DCGM
             if (g.reveal != null) g.reveal.SetActive(true);
             m_Phase = Phase.GuessResult;
 
+            Label(g.focus, $"{g.actualCarbs:0} g", 0.16f);
+
+            // The per-cup rule first, so it can be reused next time: "33 g per cup x 2 1/2 cups = 83 g".
             float miss = m_Guess - g.actualCarbs;
-            string body = $"This is <b>{g.amountText}</b> of {g.foodName}: <b>{g.actualCarbs:0} g</b> of carbs.\n{Effect(m_Guess, g.actualCarbs)}";
+            string cups = g.amountText.Replace(" cups", "").Replace(" cup", "");
+            string body = $"{Capital(g.foodName)} has about <b>{g.carbsPerCup:0} g of carbs per cup</b>. This bowl held {g.amountText}: " +
+                $"{g.carbsPerCup:0} g × {cups} = <b>{g.actualCarbs:0} g</b>.\n{Effect(m_Guess, g.actualCarbs)}";
             ShowResult(Header(miss), body, CgmGraph.Simulate(g.actualCarbs, m_Guess), miss,
                 "Your guess", m_Guess, "Actual", g.actualCarbs);
             arrow.SetTarget(null);
@@ -270,14 +287,16 @@ namespace T1DCGM
                 "Target", target, "Your plate", carbs);
         }
 
-        /// <summary>RESTART at a build station: food back on the board, and that activity from the start (same target).</summary>
-        void Restart(int index)
+        /// <summary>
+        /// RESTART at a station: its food goes back (extra pieces taken from the supply are cleared) and that activity
+        /// starts again; a build keeps the same target.
+        /// </summary>
+        void Restart(int round)
         {
-            int round = guessStations.Count + index;
             if (m_Phase == Phase.Intro || round > m_Round) return; // not reached yet
-            var b = buildStations[index];
-            if (b.root != null)
-                foreach (var home in b.root.GetComponentsInChildren<ReturnHome>())
+            var root = round < guessStations.Count ? guessStations[round].root : buildStations[round - guessStations.Count].root;
+            if (root != null)
+                foreach (var home in root.GetComponentsInChildren<ReturnHome>())
                     home.GoHome();
             m_Results[round] = default;
             StartRound(round);
@@ -397,7 +416,7 @@ namespace T1DCGM
 
         static string Capital(string s) => string.IsNullOrEmpty(s) ? s : char.ToUpperInvariant(s[0]) + s.Substring(1);
 
-        void Label(Transform target, string text)
+        void Label(Transform target, string text, float height = 0.08f)
         {
             var go = new GameObject("Carb Label", typeof(RectTransform));
             go.transform.SetParent(target, false);
@@ -408,7 +427,7 @@ namespace T1DCGM
             tmp.alignment = TextAlignmentOptions.Center;
             tmp.color = k_Yellow;
             tmp.rectTransform.sizeDelta = new Vector2(0.2f, 0.05f);
-            go.AddComponent<BillboardLabel>().height = 0.08f;
+            go.AddComponent<BillboardLabel>().height = height;
             m_Labels.Add(go);
         }
 
