@@ -18,7 +18,7 @@ namespace T1DCGM.EditorTools
         const float k_BackWall = 1.45f;
         static readonly float[] k_StationX = { -1.35f, -0.45f, 0.45f, 1.35f };
 
-        /// <summary>Scene 2: a cafeteria buffet. Guess the carbs in two served dishes, then build two 50 g plates.</summary>
+        /// <summary>Scene 2: a cafeteria buffet. Guess the carbs in two served dishes, then build two plates to random targets.</summary>
         static void BuildLunchScene()
         {
             var scene = NewScene();
@@ -47,7 +47,7 @@ namespace T1DCGM.EditorTools
             BuildDiningArea(env);
             BuildDecorTable(env);
             var arrow = BuildGuideArrow();
-            var tablet = BuildTablet(head);
+            var tablet = BuildTablet(head, guess, build);
 
             var managerGo = new GameObject("Lunch Quiz Manager");
             var manager = managerGo.AddComponent<LunchQuizManager>();
@@ -310,6 +310,18 @@ namespace T1DCGM.EditorTools
             return root;
         }
 
+        /// <summary>
+        /// Where the tablet parks for this station: over the front of the counter, in front of the sneeze guard, high enough
+        /// that the food below stays in view (the height follows the learner's eyes at run time).
+        /// </summary>
+        static Transform TabletDock(Transform root)
+        {
+            var dock = new GameObject("Tablet Dock").transform;
+            dock.SetParent(root, false);
+            dock.localPosition = new Vector3(0f, 1.5f - k_TableTop, 0.31f);
+            return dock;
+        }
+
         static GuessStation GuessStationRice(Transform env, float x)
         {
             var root = StationRoot(env, "Rice Station (guess)", x);
@@ -332,9 +344,9 @@ namespace T1DCGM.EditorTools
                 actualCarbs = Mathf.Round(cups * FoodData.RiceCarbsPerCup),
                 amountText = FoodData.Cups(cups),
                 focus = dish,
+                dock = TabletDock(root),
             };
             ChafingDish(root, "Steamed rice");
-            GuessControls(root, g);
             g.reveal = CupsReveal(root, FoodModels.PileFood.Rice, cups, g.amountText);
             return g;
         }
@@ -360,9 +372,9 @@ namespace T1DCGM.EditorTools
                 actualCarbs = Mathf.Round(cups * FoodData.PastaCarbsPerCup),
                 amountText = FoodData.Cups(cups),
                 focus = dish,
+                dock = TabletDock(root),
             };
             ChafingDish(root, "Penne");
-            GuessControls(root, g);
             g.reveal = CupsReveal(root, FoodModels.PileFood.Penne, cups, g.amountText);
             return g;
         }
@@ -395,39 +407,24 @@ namespace T1DCGM.EditorTools
             NameCard(root, name, new Vector3(0.2f, 0f, 0.53f));
         }
 
-        static void NameCard(Transform root, string name, Vector3 pos)
+        /// <summary>Small folded card standing at <paramref name="pos"/>, leaning back, with a name and an optional second line.</summary>
+        static void NameCard(Transform root, string name, Vector3 pos, float width = 0.12f, float height = 0.06f, string detail = null)
         {
-            var card = new GameObject("Name Card").transform;
+            var card = new GameObject($"Name Card ({name})").transform;
             card.SetParent(root, false);
             card.localPosition = pos;
-            var body = Box("Card", card, s_Mats["White"], new Vector3(0f, 0.03f, 0f), new Vector3(0.12f, 0.06f, 0.003f), false);
-            body.transform.localRotation = Quaternion.Euler(-12f, 0f, 0f);
-            var t = Text3D("Text", card, $"<b>{name}</b>", 0.14f, new Color(0.15f, 0.15f, 0.18f), new Vector2(0.11f, 0.04f));
-            t.transform.localPosition = new Vector3(0f, 0.03f, -0.004f);
-            t.transform.localRotation = Quaternion.Euler(-12f, 0f, 0f);
+            var tilt = Quaternion.Euler(-12f, 0f, 0f);
+            var body = Box("Card", card, s_Mats["White"], tilt * new Vector3(0f, height / 2f, 0f), new Vector3(width, height, 0.003f), false);
+            body.transform.localRotation = tilt;
+            NoShadow(body);
+            string text = detail == null ? $"<b>{name}</b>" : $"<b>{name}</b>\n<size=72%><color=#5a6270>{detail}</color></size>";
+            var t = Text3D("Text", card, text, 0.14f, new Color(0.15f, 0.15f, 0.18f), new Vector2(width - 0.01f, height - 0.012f));
+            t.transform.localPosition = tilt * new Vector3(0f, height / 2f, -0.0025f);
+            t.transform.localRotation = tilt;
             t.enableAutoSizing = true;
-            t.fontSizeMin = 0.05f;
-            t.fontSizeMax = 0.14f;
-        }
-
-        /// <summary>-5, +5, +10 and LOCK IN buttons along the counter edge, and a small display of the guess.</summary>
-        static void GuessControls(Transform root, GuessStation g)
-        {
-            const float z = 0.27f;
-            g.minusButton = PokeButton("Minus 5", root, new Vector3(-0.2f, 0f, z), "-5", s_Mats["Grey"], out _);
-            g.plusButton = PokeButton("Plus 5", root, new Vector3(-0.09f, 0f, z), "+5", s_Mats["Grey"], out _);
-            g.plusTenButton = PokeButton("Plus 10", root, new Vector3(0.02f, 0f, z), "+10", s_Mats["Grey"], out _);
-            g.lockButton = PokeButton("Lock In", root, new Vector3(0.2f, 0f, z), "LOCK IN", s_Mats["Green"], out _);
-
-            var display = new GameObject("Guess Display").transform;
-            display.SetParent(root, false);
-            display.localPosition = new Vector3(0.3f, 0f, 0.42f);
-            display.localRotation = Quaternion.Euler(-25f, -15f, 0f);
-            Box("Stand", display, s_Mats["Dark"], new Vector3(0f, 0.045f, 0.01f), new Vector3(0.14f, 0.09f, 0.012f), false);
-            var caption = Text3D("Caption", display, "your guess", 0.08f, new Color(0.65f, 0.72f, 0.8f), new Vector2(0.13f, 0.02f));
-            caption.transform.localPosition = new Vector3(0f, 0.075f, 0.002f);
-            g.readout = Text3D("Value", display, "", 0.32f, Color.white, new Vector2(0.13f, 0.05f));
-            g.readout.transform.localPosition = new Vector3(0f, 0.037f, 0.002f);
+            t.fontSizeMin = 0.04f;
+            t.fontSizeMax = 0.12f;
+            t.lineSpacing = -10f;
         }
 
         /// <summary>Answer for a served dish: the same amount in measuring cups (full cups plus a part cup).</summary>
@@ -468,13 +465,12 @@ namespace T1DCGM.EditorTools
 
         // ------------------------------------------------------------------ build stations (pieces)
 
+        /// <summary>Plate, tablet dock and a blue RESTART button (DONE is on the tablet, or the A button).</summary>
         static BuildStation BuildStationBase(Transform root, string food)
         {
             var plate = BuildPlate(root, new Vector3(0f, 0f, 0.4f));
-            var b = new BuildStation { foodName = food, root = root, plate = plate };
-            b.doneButton = PokeButton("Done Button", root, new Vector3(0.24f, 0f, 0.27f), "DONE", s_Mats["Green"], out var doneLabel);
-            b.doneLabel = doneLabel;
-            b.resetButton = PokeButton("Reset Button", root, new Vector3(-0.24f, 0f, 0.27f), "RESET", s_Mats["Red"], out _);
+            var b = new BuildStation { foodName = food, root = root, plate = plate, dock = TabletDock(root) };
+            b.restartButton = PokeButton("Restart Button", root, new Vector3(-0.24f, 0f, 0.27f), "RESTART", s_Mats["Blue"], out _);
             return b;
         }
 
@@ -482,7 +478,10 @@ namespace T1DCGM.EditorTools
         {
             var root = StationRoot(env, "Bread Station (build)", x);
             Box("Bread Board", root, s_Mats["Wood"], new Vector3(0f, 0.01f, 0.68f), new Vector3(0.56f, 0.02f, 0.3f), true);
-            NameCard(root, "Bread", new Vector3(0.33f, 0f, 0.53f));
+            const float cardZ = 0.565f, cardY = 0.02f;
+            NameCard(root, "Sandwich bread", new Vector3(-0.17f, cardY, cardZ), 0.12f, 0.05f, "thin slice");
+            NameCard(root, "Thick-cut bread", new Vector3(-0.02f, cardY, cardZ), 0.12f, 0.05f, "thick slice");
+            NameCard(root, "Bagel", new Vector3(0.16f, cardY, cardZ), 0.1f, 0.05f, "whole");
 
             // Same food, different sizes. Stacked so the learner sees thickness.
             for (int i = 0; i < 4; i++)
@@ -499,18 +498,21 @@ namespace T1DCGM.EditorTools
         {
             var root = StationRoot(env, "Fruit Station (build)", x);
             Box("Fruit Board", root, s_Mats["Wood"], new Vector3(0f, 0.01f, 0.68f), new Vector3(0.62f, 0.02f, 0.3f), true);
-            NameCard(root, "Fruit", new Vector3(-0.36f, 0f, 0.53f));
-            const float top = 0.02f;
-            Banana(root, new Vector3(-0.2f, top, 0.6f), 10f);
-            Banana(root, new Vector3(-0.2f, top, 0.71f), -6f);
-            Apple(root, new Vector3(-0.03f, top, 0.61f), 0f);
-            Apple(root, new Vector3(-0.03f, top, 0.74f), 140f);
-            Orange(root, new Vector3(0.08f, top, 0.61f));
-            Orange(root, new Vector3(0.08f, top, 0.74f));
+            const float top = 0.02f, cardZ = 0.55f;
+            NameCard(root, "Banana", new Vector3(-0.2f, top, cardZ), 0.1f, 0.045f, "medium");
+            NameCard(root, "Apple", new Vector3(-0.03f, top, cardZ), 0.09f, 0.045f, "medium");
+            NameCard(root, "Orange", new Vector3(0.08f, top, cardZ), 0.09f, 0.045f, "medium");
+            NameCard(root, "Watermelon", new Vector3(0.23f, top, cardZ), 0.11f, 0.045f, "1 wedge");
+            Banana(root, new Vector3(-0.2f, top, 0.61f), 10f);
+            Banana(root, new Vector3(-0.2f, top, 0.72f), -6f);
+            Apple(root, new Vector3(-0.03f, top, 0.62f), 0f);
+            Apple(root, new Vector3(-0.03f, top, 0.75f), 140f);
+            Orange(root, new Vector3(0.08f, top, 0.62f));
+            Orange(root, new Vector3(0.08f, top, 0.75f));
             for (int i = 0; i < 2; i++)
             {
-                Watermelon(root, new Vector3(0.23f, top + 0.0125f + 0.0255f * i, 0.62f), 180f);
-                Watermelon(root, new Vector3(0.23f, top + 0.0125f + 0.0255f * i, 0.76f), 0f);
+                Watermelon(root, new Vector3(0.23f, top + 0.0125f + 0.0255f * i, 0.635f), 180f);
+                Watermelon(root, new Vector3(0.23f, top + 0.0125f + 0.0255f * i, 0.77f), 0f);
             }
             return BuildStationBase(root, "fruit");
         }
@@ -711,95 +713,6 @@ namespace T1DCGM.EditorTools
                 go.transform.position += new Vector3(x, top, z) - new Vector3(b.center.x, b.min.y, b.center.z);
                 z += Mathf.Max(0.18f, size + 0.06f);
             }
-        }
-
-        // ------------------------------------------------------------------ tablet
-
-        /// <summary>Instruction tablet that floats below-left of the view; the learner pokes NEXT / BACK.</summary>
-        static InfoTablet BuildTablet(Transform head)
-        {
-            const float W = 0.3f, H = 0.2f;
-            var root = new GameObject("Tablet (follows your view)");
-            var follow = root.AddComponent<FollowHead>();
-            follow.head = head;
-            follow.offset = new Vector3(0f, -0.17f, 0.4f); // straight ahead, just below eye level, in front of the sneeze guard
-            follow.minHeight = 1.3f;                       // stays clear of the food and the counter
-            root.transform.position = head.parent != null ? new Vector3(head.position.x, 1.45f, head.position.z + 0.4f) : head.position;
-            var tablet = root.AddComponent<InfoTablet>();
-
-            var frame = Part("Frame", root.transform, SaveMesh("Tablet_Frame", MeshFactory.RoundedBox("Tablet_Frame", new Vector3(W + 0.02f, 0.01f, H + 0.02f), 0.014f)), s_Mats["Dark"]);
-            frame.transform.SetLocalPositionAndRotation(new Vector3(0f, 0f, 0.005f), Quaternion.Euler(90f, 0f, 0f));
-            var screen = Part("Screen", root.transform, SaveMesh("Tablet_Screen", MeshFactory.RoundedBox("Tablet_Screen", new Vector3(W, 0.001f, H), 0.008f)), s_Mats["TabletScreen"]);
-            screen.transform.SetLocalPositionAndRotation(new Vector3(0f, 0f, -0.0005f), Quaternion.Euler(90f, 0f, 0f));
-            NoShadow(root);
-
-            const float pad = 0.015f, z = -0.002f;
-            tablet.titleText = Text3D("Title", root.transform, "", 0.13f, new Color(1f, 0.84f, 0.25f), new Vector2(W - 2f * pad, 0.028f));
-            tablet.titleText.alignment = TextAlignmentOptions.Left;
-            tablet.titleText.enableAutoSizing = true;
-            tablet.titleText.fontSizeMin = 0.07f;
-            tablet.titleText.fontSizeMax = 0.13f;
-            tablet.titleText.transform.localPosition = new Vector3(0f, H / 2f - pad - 0.014f, z);
-
-            var body = Text3D("Body", root.transform, "", 0.095f, Color.white, new Vector2(W - 2f * pad, 0.13f));
-            body.alignment = TextAlignmentOptions.TopLeft;
-            body.textWrappingMode = TextWrappingModes.Normal;
-            body.enableAutoSizing = true;
-            body.fontSizeMin = 0.055f;
-            body.fontSizeMax = 0.095f;
-            body.lineSpacing = 4f;
-            body.rectTransform.pivot = new Vector2(0.5f, 1f);
-            body.transform.localPosition = new Vector3(0f, H / 2f - pad - 0.034f, z);
-            tablet.bodyText = body;
-            tablet.bodyHeightFull = 0.13f;
-            tablet.bodyHeightWithGraph = 0.068f;
-
-            tablet.footerText = Text3D("Footer", root.transform, "", 0.06f, new Color(0.6f, 0.68f, 0.78f), new Vector2(W - 2f * pad, 0.016f));
-            tablet.footerText.alignment = TextAlignmentOptions.Left;
-            tablet.footerText.transform.localPosition = new Vector3(0f, -H / 2f + 0.011f, z);
-
-            var graphRoot = new GameObject("CGM Graph").transform;
-            graphRoot.SetParent(root.transform, false);
-            var origin = new Vector3(-W / 2f + 0.035f, -H / 2f + 0.03f, z);
-            var graphGo = new GameObject("Graph");
-            graphGo.transform.SetParent(graphRoot, false);
-            graphGo.transform.localPosition = origin;
-            var graph = graphGo.AddComponent<CgmGraph>();
-            graph.width = W - 0.06f;
-            graph.height = 0.05f;
-            graph.lineMaterial = s_Mats["Line"];
-            foreach (var mg in new[] { 70f, 180f })
-            {
-                var t = Text3D($"{mg}", graphRoot, $"{mg:0}", 0.045f, new Color(0.6f, 0.68f, 0.78f), new Vector2(0.02f, 0.01f));
-                t.alignment = TextAlignmentOptions.Right;
-                t.transform.localPosition = origin + new Vector3(-0.012f, graph.height * Mathf.InverseLerp(graph.minMg, graph.maxMg, mg), 0f);
-            }
-            var endLabel = Text3D("4 h", graphRoot, "4 h", 0.045f, new Color(0.6f, 0.68f, 0.78f), new Vector2(0.02f, 0.01f));
-            endLabel.alignment = TextAlignmentOptions.Right;
-            endLabel.transform.localPosition = origin + new Vector3(graph.width - 0.01f, -0.006f, 0f);
-            tablet.graphRoot = graphRoot.gameObject;
-            tablet.graph = graph;
-            graphRoot.gameObject.SetActive(false);
-
-            tablet.nextButton = TabletButton(root.transform, "Next Button", new Vector3(W / 2f - 0.05f, -H / 2f - 0.045f, 0f), "NEXT", s_Mats["Green"], out var nextLabel);
-            tablet.nextLabel = nextLabel;
-            tablet.backButton = TabletButton(root.transform, "Back Button", new Vector3(-W / 2f + 0.05f, -H / 2f - 0.045f, 0f), "BACK", s_Mats["Grey"], out var backLabel);
-            tablet.backLabel = backLabel;
-            return tablet;
-        }
-
-        /// <summary>Poke button standing on the tablet's lower edge, cap toward the learner, label on the cap.</summary>
-        static PressButton3D TabletButton(Transform parent, string name, Vector3 pos, string label, Material cap, out TextMeshPro labelText)
-        {
-            var button = PokeButton(name, parent, pos, label, cap, out labelText);
-            button.transform.localRotation = Quaternion.Euler(-90f, 0f, 0f); // +Y (the cap) toward the viewer
-            var bb = labelText.GetComponent<BillboardLabel>();
-            if (bb != null) Object.DestroyImmediate(bb);
-            labelText.transform.SetLocalPositionAndRotation(new Vector3(0f, 0.034f, 0f), Quaternion.Euler(90f, 0f, 0f));
-            labelText.fontSize = 0.1f;
-            labelText.color = Color.white;
-            NoShadow(button.gameObject);
-            return button;
         }
 
         static void Label(Transform parent, string text, Vector3 localPosition, float fontSize, Color? color = null, bool billboard = false)

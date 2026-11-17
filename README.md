@@ -15,13 +15,17 @@ Build the scenes with menu **T1D CGM > Build Demo Scenes** (regenerates both sce
     Haptics only, No help.
   - Teleport to the LUNCH pad to go to scene 2.
 - **Scene 2, Lunch** (`Assets/T1DCGM/Scenes/Lunch.unity`, virtual cafeteria buffet)
-  - A tablet floating in front of you gives short instructions (poke NEXT / BACK, or A / B).
+  - A tablet floating in front of you gives short illustrated pages (poke NEXT / BACK, or press A / B). When the
+    rounds start it glides to each station and hovers above the food.
   - Part 1, guess: a bowl of rice and a bowl of penne, built grain by grain and piece by piece at real size.
-    Dial in a carb estimate (-5 / +5 / +10, LOCK IN); the answer appears as the same amount in measuring cups.
-  - Part 2, build: put bread, then fruit (banana, apple, orange, watermelon), on a plate until it holds a random
-    carb target (25 to 100 g, in 5 g steps).
-  - Every answer says whether the count was low (glucose runs high) or high (glucose drops low) and plays the CGM
-    trace over 4 hours (REPLAY on the tablet). No insulin doses are shown. PLAY AGAIN at the end starts over.
+    Dial in a carb estimate on the tablet (-10 / -5 / +5 / +10, LOCK IN); the answer appears as the same amount
+    in measuring cups.
+  - Part 2, build: put bread (sandwich, thick-cut, bagel), then fruit (banana, apple, orange, watermelon), on a
+    plate until it holds a random carb target (25 to 100 g, in 5 g steps), then DONE. Each food has a name card;
+    the blue RESTART button at a station starts that activity again.
+  - Every answer shows bars for what you counted and what you ate, whether glucose goes high or low, and the CGM
+    trace over 4 hours (REPLAY). The end screen charts every meal with a star score. No insulin doses are shown.
+    PLAY AGAIN starts over.
 - **Passthrough prototype** (`Assets/T1DCGM/Scenes/PassthroughPrototype.unity`): passthrough status and a touch test.
 - Food models for the side table: low-poly food pack in `Assets/Food Pack-Demo`.
 

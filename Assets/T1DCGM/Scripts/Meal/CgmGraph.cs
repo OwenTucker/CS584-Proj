@@ -17,6 +17,9 @@ namespace T1DCGM
         public Material lineMaterial;
         public TMP_Text valueText;
         public TMP_Text captionText;
+        [Tooltip("Draw a fixed example on start (for pictures): a meal of previewEaten g counted as previewCounted g.")]
+        public bool preview;
+        public float previewEaten = 60f, previewCounted = 30f;
 
         public const float MinutesPerReading = 5f;
         public const float Low = 70f, High = 180f;
@@ -34,6 +37,13 @@ namespace T1DCGM
             m_Line = NewLine("Readings Line", Mathf.Max(0.0008f, width * 0.005f), new Color(1f, 1f, 1f, 0.6f));
             Band(Low, k_LowColor);
             Band(High, k_HighColor);
+        }
+
+        void Start()
+        {
+            if (!preview) return;
+            var readings = Simulate(previewEaten, previewCounted, hours);
+            Plot(readings, readings.Length);
         }
 
         LineRenderer NewLine(string name, float w, Color c)
