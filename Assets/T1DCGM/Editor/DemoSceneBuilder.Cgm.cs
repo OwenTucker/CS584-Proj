@@ -73,6 +73,10 @@ namespace T1DCGM.EditorTools
             mirrorLabel.transform.localPosition = new Vector3(0f, 0.245f, 0f);
             SetLayer(mirrorRoot.gameObject, k_UILayer);
 
+            // Figure to the right of the board showing where to touch during calibration.
+            var calibrationGuide = BuildCalibrationGuide(st, new Vector3(0.72f, 1.3f, 0.85f));
+            SetLayer(calibrationGuide.gameObject, k_UILayer);
+
             var lunchPad = ScenePad(st, "Lunch Pad", new Vector3(0f, 0f, 1.4f), 0f, "LUNCH", k_LunchSceneName);
 
             // ---- world-space parts (the calibrated arm lives in tracking space)
@@ -111,6 +115,7 @@ namespace T1DCGM.EditorTools
             trainer.applicatorSensor = applicatorSensor;
             trainer.sensorMesh = SensorMesh();
             trainer.lunchPad = lunchPad;
+            trainer.calibrationGuide = calibrationGuide;
             trainer.tierButtons = tierRoot.gameObject;
             trainer.guidedButton = guided;
             trainer.hapticsButton = haptics;
@@ -143,6 +148,77 @@ namespace T1DCGM.EditorTools
             floor.transform.position = new Vector3(0f, -thickness / 2f, 0f); // top face at y = 0
             var box = floor.AddComponent<BoxCollider>();
             box.size = new Vector3(size, thickness, size);
+        }
+
+        /// <summary>
+        /// Simple figure of the learner seen from behind (its back faces the learner, so its left arm is on their left),
+        /// with a pulsing dot on the next calibration touch point. Left arm highlighted; right arm greyed.
+        /// </summary>
+        static CalibrationGuide BuildCalibrationGuide(Transform parent, Vector3 localPosition)
+        {
+            var root = new GameObject("Calibration Guide (you, from behind)");
+            root.transform.SetParent(parent, false);
+            root.transform.localPosition = localPosition;
+            root.transform.localRotation = Quaternion.LookRotation(new Vector3(localPosition.x, 0f, localPosition.z).normalized, Vector3.up);
+            var r = root.transform;
+
+            var body = s_Mats["Grey"];
+            var arm = s_Mats["White"];
+            Prim("Head", PrimitiveType.Sphere, r, body, new Vector3(0f, 0.2f, 0f), Vector3.one * 0.09f);
+            Box("Torso", r, body, new Vector3(0f, 0.03f, 0f), new Vector3(0.2f, 0.24f, 0.09f), false);
+            for (int side = -1; side <= 1; side += 2)
+            {
+                bool left = side < 0; // -X is the figure's (and the learner's) left
+                var mat = left ? arm : body;
+                string n = left ? "Left" : "Right";
+                Prim(n + " Shoulder", PrimitiveType.Sphere, r, mat, new Vector3(0.125f * side, 0.125f, 0f), Vector3.one * 0.065f);
+                Prim(n + " Upper Arm", PrimitiveType.Capsule, r, mat, new Vector3(0.135f * side, 0.035f, 0f), new Vector3(0.055f, 0.085f, 0.055f));
+                Prim(n + " Elbow", PrimitiveType.Sphere, r, mat, new Vector3(0.135f * side, -0.06f, 0f), Vector3.one * 0.05f);
+                Prim(n + " Forearm", PrimitiveType.Capsule, r, mat, new Vector3(0.135f * side, -0.15f, 0f), new Vector3(0.045f, 0.08f, 0.045f));
+            }
+
+            // Touch points on the left arm; -Z is the figure's back (the side facing the learner).
+            var points = new[]
+            {
+                new Vector3(-0.125f, 0.16f, 0f),     // top of shoulder
+                new Vector3(-0.135f, -0.06f, -0.03f), // point of elbow
+                new Vector3(-0.135f, 0.035f, -0.03f), // back of upper arm, halfway down
+            };
+            var targets = new Transform[points.Length];
+            var done = new GameObject[points.Length];
+            for (int i = 0; i < points.Length; i++)
+            {
+                targets[i] = new GameObject("Target " + (i + 1)).transform;
+                targets[i].SetParent(r, false);
+                targets[i].localPosition = points[i];
+                done[i] = Prim("Done " + (i + 1), PrimitiveType.Sphere, r, s_Mats["Green"], points[i], Vector3.one * 0.02f);
+                done[i].SetActive(false);
+            }
+            var marker = Prim("Touch Here", PrimitiveType.Sphere, r, s_Mats["Arrow"], points[0], Vector3.one * 0.03f);
+
+            var title = Text3D("Title", r, "<b>YOU</b>  (seen from behind)", 0.11f, new Color(0.75f, 0.82f, 0.9f), new Vector2(0.4f, 0.03f));
+            title.transform.localPosition = new Vector3(0f, 0.28f, 0f);
+            var caption = Text3D("Caption", r, "", 0.15f, new Color(1f, 0.84f, 0.25f), new Vector2(0.4f, 0.04f));
+            caption.transform.localPosition = new Vector3(0f, -0.25f, 0f);
+
+            var guide = root.AddComponent<CalibrationGuide>();
+            guide.targets = targets;
+            guide.doneDots = done;
+            guide.marker = marker.transform;
+            guide.caption = caption;
+            return guide;
+        }
+
+        static GameObject Prim(string name, PrimitiveType type, Transform parent, Material material, Vector3 localPosition, Vector3 scale)
+        {
+            var go = GameObject.CreatePrimitive(type);
+            go.name = name;
+            Object.DestroyImmediate(go.GetComponent<Collider>());
+            go.transform.SetParent(parent, false);
+            go.transform.localPosition = localPosition;
+            go.transform.localScale = scale;
+            go.GetComponent<Renderer>().sharedMaterial = material;
+            return go;
         }
 
         /// <summary>Plain room around the start point, shown only when passthrough is unavailable.</summary>
@@ -218,6 +294,7 @@ namespace T1DCGM.EditorTools
             var tool = root.AddComponent<HeldTool>();
             tool.face = face;
             tool.displayName = "applicator";
+            tool.keepGrabAngle = true; // hold it at whatever angle it was picked up
             var label = Text3D("Label", root.transform, "<b>CGM applicator</b>", 0.12f, Color.white, new Vector2(0.2f, 0.03f));
             label.gameObject.AddComponent<BillboardLabel>().height = 0.09f;
             return tool;
@@ -225,8 +302,7 @@ namespace T1DCGM.EditorTools
 
         static HeldTool BuildWipe(Transform parent, Vector3 localPosition)
         {
-            var packet = Box("Wipe Packet", parent, s_Mats["WipePacket"], localPosition + new Vector3(0f, 0.002f, 0.05f), new Vector3(0.06f, 0.004f, 0.06f), false);
-            var packetLabel = Text3D("Label", packet.transform.parent, "<b>alcohol wipe</b>", 0.12f, Color.white, new Vector2(0.2f, 0.03f));
+            var packetLabel = Text3D("Label", parent, "<b>alcohol wipe</b>", 0.12f, Color.white, new Vector2(0.2f, 0.03f));
             packetLabel.transform.localPosition = localPosition + new Vector3(0f, 0.08f, 0.02f);
 
             var root = new GameObject("Alcohol Wipe");
