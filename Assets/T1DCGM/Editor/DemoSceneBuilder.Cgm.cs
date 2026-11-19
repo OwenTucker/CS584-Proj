@@ -127,7 +127,22 @@ namespace T1DCGM.EditorTools
             fallback.fallbackRoom = BuildFallbackRoom();
             fallback.trainer = trainer;
 
+            BuildPassthroughFloor();
+
             EditorSceneManager.SaveScene(scene, k_CgmScenePath);
+        }
+
+        /// <summary>
+        /// Invisible floor at the real floor height (y = 0). The XR Origin's gravity pulls the rig down, and the only
+        /// other floor (the fallback room's) is hidden while passthrough runs, so without this the learner falls through.
+        /// </summary>
+        static void BuildPassthroughFloor()
+        {
+            const float size = 40f, thickness = 0.2f;
+            var floor = new GameObject("Floor Collider (invisible)");
+            floor.transform.position = new Vector3(0f, -thickness / 2f, 0f); // top face at y = 0
+            var box = floor.AddComponent<BoxCollider>();
+            box.size = new Vector3(size, thickness, size);
         }
 
         /// <summary>Plain room around the start point, shown only when passthrough is unavailable.</summary>
