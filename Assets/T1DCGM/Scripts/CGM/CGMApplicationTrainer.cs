@@ -27,6 +27,10 @@ namespace T1DCGM
         public FollowStart station;
         public Camera xrCamera;
         public Transform rightController;
+        [Tooltip("Second hand that can turn the applicator (hold left GRIP near it).")]
+        public Transform leftController;
+        [Tooltip("How close (metres) the left controller must be to the applicator to take hold of it.")]
+        public float twistReach = 0.25f;
         public GhostArm ghost;
         public ArmMirror mirror;
         public HeldTool wipe;
@@ -57,7 +61,7 @@ namespace T1DCGM
         public CgmStep step = CgmStep.Intro;
 
         readonly ArmModel m_Arm = new ArmModel();
-        InputAction m_Confirm, m_Grip, m_Trigger, m_Recenter, m_Recalibrate;
+        InputAction m_Confirm, m_Grip, m_LeftGrip, m_Trigger, m_Recenter, m_Recalibrate;
         Transform m_Tip;
         HeldTool m_Held;
         float m_CleanTime, m_NextBuzz;
@@ -80,9 +84,11 @@ namespace T1DCGM
         {
             if (xrCamera == null) xrCamera = Camera.main;
             if (rightController == null) rightController = XRInput.FindByName("Right Controller");
+            if (leftController == null) leftController = XRInput.FindByName("Left Controller");
 
             m_Confirm = XRInput.Button("Confirm", "<XRController>{RightHand}/primaryButton", "<Keyboard>/space");
             m_Grip = XRInput.Button("Grip", "<XRController>{RightHand}/gripButton", "<Keyboard>/g");
+            m_LeftGrip = XRInput.Button("Left grip", "<XRController>{LeftHand}/gripButton", "<Keyboard>/h");
             m_Trigger = XRInput.Button("Press", "<XRController>{RightHand}/triggerButton", "<Keyboard>/t");
             m_Recenter = XRInput.Button("Recenter", "<XRController>{LeftHand}/primaryButton", "<Keyboard>/r");
             m_Recalibrate = XRInput.Button("Recalibrate", "<XRController>{RightHand}/secondaryButton", "<Keyboard>/backspace");
@@ -98,6 +104,8 @@ namespace T1DCGM
             m_Confirm.performed += OnConfirm;
             m_Grip.performed += OnGripDown;
             m_Grip.canceled += OnGripUp;
+            m_LeftGrip.performed += OnLeftGripDown;
+            m_LeftGrip.canceled += OnLeftGripUp;
             m_Trigger.performed += OnTrigger;
             m_Recenter.performed += OnRecenter;
             m_Recalibrate.performed += OnRecalibrate;
@@ -108,6 +116,8 @@ namespace T1DCGM
             m_Confirm.performed -= OnConfirm;
             m_Grip.performed -= OnGripDown;
             m_Grip.canceled -= OnGripUp;
+            m_LeftGrip.performed -= OnLeftGripDown;
+            m_LeftGrip.canceled -= OnLeftGripUp;
             m_Trigger.performed -= OnTrigger;
             m_Recenter.performed -= OnRecenter;
             m_Recalibrate.performed -= OnRecalibrate;
@@ -119,7 +129,7 @@ namespace T1DCGM
             foreach (var a in Actions) a?.Dispose();
         }
 
-        IEnumerable<InputAction> Actions => new[] { m_Confirm, m_Grip, m_Trigger, m_Recenter, m_Recalibrate };
+        IEnumerable<InputAction> Actions => new[] { m_Confirm, m_Grip, m_LeftGrip, m_Trigger, m_Recenter, m_Recalibrate };
 
         void Start()
         {
@@ -205,7 +215,7 @@ namespace T1DCGM
             tool.Release();
             if (tool == applicator && step == CgmStep.Place)
             {
-                board.ShowFeedback("Applicator put down. Pick it up again with GRIP, at any angle you like.", FeedbackKind.Info);
+                board.ShowFeedback("Dropped. GRIP to pick it up again.", FeedbackKind.Info);
                 Enter(CgmStep.PickUp);
             }
             else if (tool == applicator && step == CgmStep.Remove)
@@ -213,6 +223,23 @@ namespace T1DCGM
                 // Letting go also lifts it off the arm.
                 FinishApplication();
             }
+        }
+
+        // Two hands: while the right hand holds the applicator, left GRIP near it lets the left hand turn it.
+        void OnLeftGripDown(InputAction.CallbackContext _)
+        {
+            if (m_Held != applicator || step != CgmStep.Place || leftController == null)
+                return;
+            if (Vector3.Distance(leftController.position, applicator.Centre) > twistReach)
+                return;
+            applicator.BeginTwist(leftController);
+            XRInput.Haptic(XRNode.LeftHand, 0.3f, 0.05f);
+        }
+
+        void OnLeftGripUp(InputAction.CallbackContext _)
+        {
+            if (applicator != null && applicator.twisting)
+                applicator.EndTwist();
         }
 
         void OnTrigger(InputAction.CallbackContext _)
@@ -223,7 +250,7 @@ namespace T1DCGM
             var p = m_Arm.Locate(applicator.FacePosition);
             if (!p.touching)
             {
-                board.ShowFeedback("The applicator is not touching your arm. Rest it flat on the skin first, then squeeze.", FeedbackKind.Error);
+                board.ShowFeedback("Not touching your arm yet.", FeedbackKind.Error);
                 Play(ToneLibrary.Error());
                 return;
             }
@@ -309,6 +336,7 @@ namespace T1DCGM
             ghost.SetVisible(calibrated && (guided || !m_Passthrough), calibrated && guided);
             if (mirror != null) mirror.SetActive(calibrated && guided && next < CgmStep.Result);
             if (next != CgmStep.Place) ghost.ShowOutline(default, false, false);
+            if (next != CgmStep.Place && applicator != null && applicator.twisting) applicator.EndTwist();
             if (calibrationGuide != null)
                 calibrationGuide.Show(next switch
                 {
@@ -331,60 +359,55 @@ namespace T1DCGM
                 _ => $"APPLY  {(step == CgmStep.Remove ? 4 : (int)step - 3)} OF 4   ({TierName(tier).ToUpperInvariant()})",
             };
             float progress = (int)step / 9f;
-            const string tipHint = "the cyan dot on your right controller";
-            const string figureHint = "\n\n<color=#ffd640>The yellow dot on the figure</color> (you, seen from behind) shows where.";
+            const string figureHint = "\n\n<color=#ffd640>Yellow dot on the figure = where.</color>";
+            const string calibControls = "A: record      B: start over";
             bool guided = tier == GuidanceTier.Guided;
 
             switch (step)
             {
                 case CgmStep.Intro:
-                    board.Show(counter, "Continuous Glucose Monitor (CGM)", k_Yellow,
-                        "To make informed decisions about your insulin doses, a CGM gives you a glucose reading <b>every 5 minutes</b>, day and night.\n\n" +
-                        "A small sensor sits on the back of your upper arm with a thin filament just under the skin. Most sensors last 10 to 15 days, then you apply a new one at a new spot.\n\n" +
-                        "Today: apply a CGM to <b>your own arm</b>, then use it at lunch." +
+                    board.Show(counter, "Continuous Glucose Monitor", k_Yellow,
+                        "A CGM reads your glucose <b>every 5 minutes</b>, day and night.\n\n" +
+                        "Today: put one on <b>your own arm</b>, then use it at lunch." +
                         (string.IsNullOrEmpty(m_PassthroughNote) ? "" : "\n\n" + m_PassthroughNote),
-                        "A: continue      X (left): move this board in front of you", progress);
+                        "A: continue      X: move board", progress);
                     break;
                 case CgmStep.CalibShoulder:
-                    board.Show(counter, "Calibrate your arm", Color.white,
-                        "Stand still with your <b>left arm relaxed at your side</b>.\n\n" +
-                        $"Touch {tipHint} to the <b>top of your left shoulder</b>, then press A." + figureHint,
-                        "A: record touch      B: start calibration again", progress);
+                    board.Show(counter, "Top of your shoulder", Color.white,
+                        "Left arm relaxed at your side.\nTouch the <b>cyan dot</b> on your right controller to the <b>top of your left shoulder</b>." + figureHint,
+                        calibControls, progress);
                     break;
                 case CgmStep.CalibElbow:
-                    board.Show(counter, "Calibrate your arm", Color.white,
-                        $"Keep the arm where it is. Touch {tipHint} to the <b>point of your left elbow</b>, then press A." + figureHint,
-                        "A: record touch      B: start calibration again", progress);
+                    board.Show(counter, "Point of your elbow", Color.white,
+                        "Keep still. Touch the <b>point of your left elbow</b>." + figureHint,
+                        calibControls, progress);
                     break;
                 case CgmStep.CalibBack:
-                    board.Show(counter, "Calibrate your arm", Color.white,
-                        $"Now touch the <b>back of your left upper arm</b>, halfway between shoulder and elbow, then press A.\n\nYou cannot see this spot. Find it by feel." + figureHint,
-                        "A: record touch      B: start calibration again", progress);
+                    board.Show(counter, "Back of your upper arm", Color.white,
+                        "Touch the <b>back of your upper arm</b>, halfway down. Find it by feel." + figureHint,
+                        calibControls, progress);
                     break;
                 case CgmStep.Clean:
                     board.Show(counter, "Clean the site", Color.white,
-                        "Pick up the <b>alcohol wipe</b> from the tray with GRIP and rub it on the back of your upper arm for a few seconds" +
-                        (guided ? " (the green area in the mirror)." : ".") +
-                        "\n\nSkin oils and lotion stop the adhesive from sticking.",
-                        "Hold GRIP: pick up      B: recalibrate", progress);
+                        "GRIP the <b>alcohol wipe</b> and rub the back of your upper arm" + (guided ? " (green area)" : "") + ".",
+                        "GRIP: pick up      B: recalibrate", progress);
                     break;
                 case CgmStep.PickUp:
                     board.Show(counter, "Pick up the applicator", Color.white,
-                        "Let the skin air dry.\n\nPick up the <b>CGM applicator</b> from the tray with GRIP and keep holding GRIP. " +
-                        "It stays at the angle you pick it up at, so grab it however is comfortable.",
-                        "Hold GRIP: pick up      B: recalibrate", progress);
+                        "Let the skin dry.\n\nGRIP the <b>applicator</b> at any angle and keep holding.",
+                        "GRIP: pick up      B: recalibrate", progress);
                     break;
                 case CgmStep.Place:
-                    board.Show(counter, "Place and press", Color.white,
-                        "Rest the applicator <b>flat against the back of your upper arm</b>" + (guided ? ", inside the green area" : "") + ".\n\n" +
-                        "Then squeeze the <b>TRIGGER</b> to push it down firmly. It clicks and the sensor is in." +
-                        (tier == GuidanceTier.HapticsOnly ? "\n\nThe controller buzzes when you are outside the right area." : "") +
-                        (tier == GuidanceTier.NoHelp ? "\n\nNo help this time. You will see your score afterwards." : ""),
-                        "Hold GRIP: hold applicator      TRIGGER: press down", progress);
+                    board.Show(counter, "Place and click", Color.white,
+                        "Hold it <b>flat on the back of your arm</b>" + (guided ? ", in the green area" : "") + ", then pull the <b>TRIGGER</b>." +
+                        "\n\n<size=85%>To turn it: hold <b>left GRIP</b> near it and twist your left hand.</size>" +
+                        (tier == GuidanceTier.HapticsOnly ? "\n<size=85%>A buzz means wrong spot.</size>" : "") +
+                        (tier == GuidanceTier.NoHelp ? "\n<size=85%>No help this time.</size>" : ""),
+                        "GRIP: hold      TRIGGER: click in      Left GRIP: turn", progress);
                     break;
                 case CgmStep.Remove:
-                    board.Show(counter, "Pull the applicator away", Color.white,
-                        "Pull the applicator <b>straight away</b> from your arm. The sensor stays on your skin.",
+                    board.Show(counter, "Pull away", Color.white,
+                        "Pull the applicator <b>straight off</b>. The sensor stays on.",
                         "Move your hand away", progress);
                     break;
             }
@@ -420,7 +443,7 @@ namespace T1DCGM
             {
                 Buzz(0.35f);
                 if (tier == GuidanceTier.Guided)
-                    board.ShowFeedback("Clean the spot where the sensor will go: the back of the upper arm.", FeedbackKind.Info);
+                    board.ShowFeedback("Clean the back of the upper arm.", FeedbackKind.Info);
                 return;
             }
 
@@ -512,21 +535,20 @@ namespace T1DCGM
 
             int passed = (inZone ? 1 : 0) + (flat ? 1 : 0) + (newSite ? 1 : 0);
             var sb = new StringBuilder();
-            sb.AppendLine(Check(inZone, "Site: back of the upper arm", inZone ? "" : WhereText(m_PressPlacement)));
-            sb.AppendLine(Check(flat, $"Flat against the skin ({m_PressTilt:0} degrees tilt)", flat ? "" : "A tilted applicator can bend the filament."));
+            sb.AppendLine(Check(inZone, "Back of the upper arm", inZone ? "" : WhereText(m_PressPlacement)));
+            sb.AppendLine(Check(flat, $"Flat ({m_PressTilt:0}° tilt)", flat ? "" : "Tilting can bend the filament."));
             sb.AppendLine(Check(newSite, "New spot",
-                newSite ? "" : $"Only {nearest * 100f:0.0} cm from a recent site. Rotate sites at least 2.5 cm (1 inch) apart."));
+                newSite ? "" : $"{nearest * 100f:0.0} cm from an old site. Keep 2.5 cm apart."));
             sb.AppendLine();
-            sb.AppendLine("Your CGM is warming up. In about an hour it will send a reading to your phone <b>every 5 minutes</b>.");
-            sb.Append("<size=80%>Tip: avoid spots you lie on at night. Pressure on the sensor can cause false low readings.</size>");
+            sb.Append("Readings start in about an hour, then <b>every 5 minutes</b>.");
 
             step = CgmStep.Result;
             ghost.SetVisible(tier == GuidanceTier.Guided || !m_Passthrough, tier == GuidanceTier.Guided);
             ghost.ShowOutline(default, false, false);
             if (mirror != null) mirror.SetActive(false);
-            board.Show($"RESULT   ({TierName(tier).ToUpperInvariant()})", passed == 3 ? "CGM applied!" : $"Sensor applied: {passed} of 3 checks passed",
+            board.Show($"RESULT   ({TierName(tier).ToUpperInvariant()})", passed == 3 ? "CGM applied!" : $"Applied: {passed} of 3 checks",
                 passed == 3 ? new Color(0.45f, 0.95f, 0.55f) : k_Yellow, sb.ToString(),
-                "Teleport to the green LUNCH pad to continue.   Poke a button on the tray to try again.", 1f);
+                "Next: teleport to LUNCH      Retry: poke a tray button", 1f);
             Play(passed == 3 ? ToneLibrary.Finish() : ToneLibrary.Success());
             if (tierButtons != null) tierButtons.SetActive(true);
             if (lunchPad != null) lunchPad.SetAvailable(true);

@@ -20,10 +20,17 @@ namespace T1DCGM.EditorTools
         {
             const float W = k_TabW, H = k_TabH;
             // Arrows, tick, star and dot used on the pages; add them to the dynamic atlas now so they ship in the build.
-            if (s_Font != null && s_Font.atlasPopulationMode == AtlasPopulationMode.Dynamic)
+            // Atkinson lacks some of them; those come from its fallback (Inter), so fill that atlas too.
+            if (s_Font != null)
             {
-                s_Font.TryAddCharacters("↑↓→✓★●", out _);
-                EditorUtility.SetDirty(s_Font);
+                var fonts = new List<TMP_FontAsset> { s_Font };
+                if (s_Font.fallbackFontAssetTable != null) fonts.AddRange(s_Font.fallbackFontAssetTable);
+                foreach (var f in fonts)
+                {
+                    if (f == null || f.atlasPopulationMode != AtlasPopulationMode.Dynamic) continue;
+                    f.TryAddCharacters("↑↓→✓★●", out _);
+                    EditorUtility.SetDirty(f);
+                }
             }
 
             var root = new GameObject("Tablet (follows your view)");
@@ -259,11 +266,11 @@ namespace T1DCGM.EditorTools
             var v = Picture(tablet, "controls", false, out var root);
             var rows = new (string key, float width, Material mat, string text)[]
             {
-                ("A", 0f, s_Mats["Dark"], "Next, lock in, done  <color=#9aa6b8>(right controller)</color>"),
-                ("B", 0f, s_Mats["Dark"], "Back, or replay the CGM graph"),
-                ("STICK", 0.05f, s_Mats["Dark"], "Push forward, aim, let go: teleport"),
-                ("GRIP", 0.05f, s_Mats["Dark"], "Hold to pick up food"),
-                ("TOUCH", 0.05f, s_Mats["Dark"], "Fingertip: poke tablet and counter buttons"),
+                ("A", 0f, s_Mats["Dark"], "Next / lock in / done"),
+                ("B", 0f, s_Mats["Dark"], "Back / replay graph"),
+                ("STICK", 0.05f, s_Mats["Dark"], "Push forward to teleport"),
+                ("GRIP", 0.05f, s_Mats["Dark"], "Pick up food"),
+                ("TOUCH", 0.05f, s_Mats["Dark"], "Poke buttons"),
             };
             for (int i = 0; i < rows.Length; i++)
             {
@@ -398,7 +405,7 @@ namespace T1DCGM.EditorTools
             chart.labels = labels;
             chart.chips = chips;
             chart.stars = TabText(root, "Stars", "", 0.16f, k_Gold, new Vector2(0.09f, 0.026f), new Vector2(0.11f, k_TabH / 2f - k_TabPad - 0.012f), TextAlignmentOptions.Right);
-            TabText(root, "Legend", "Top bar: what you counted (colour shows where glucose goes).   Bottom bar: what you ate.",
+            TabText(root, "Legend", "Top bar: counted      Bottom bar: eaten",
                 0.045f, k_Muted, new Vector2(k_TabW - 2f * k_TabPad, 0.012f), new Vector2(0f, -k_TabH / 2f + 0.012f));
             return v;
         }

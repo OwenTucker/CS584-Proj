@@ -8,7 +8,8 @@ namespace T1DCGM
     /// along the controller's forward direction: the part of the real controller that touches the skin is where the
     /// virtual tool touches it.
     /// With <see cref="keepGrabAngle"/>, the tool instead keeps the angle it had relative to the hand when it was picked
-    /// up (its middle sits on the tip), so it can be held however is comfortable.
+    /// up (its middle sits on the tip), so it can be held however is comfortable, and a second hand can turn it
+    /// (<see cref="BeginTwist"/>).
     /// Release GRIP to put it back where it started.
     /// </summary>
     public class HeldTool : MonoBehaviour
@@ -27,8 +28,13 @@ namespace T1DCGM
         Vector3 m_TipOffset;
         Quaternion m_GrabRotation;
         Vector3 m_GrabCentre;
+        Transform m_Twister;
+        Quaternion m_TwistStart;
 
         public bool held => m_Controller != null;
+        public bool twisting => m_Twister != null;
+        /// <summary>World centre of the tool (its collider's middle).</summary>
+        public Vector3 Centre => ClosestPoint();
 
         void Awake()
         {
@@ -53,8 +59,31 @@ namespace T1DCGM
             m_GrabCentre = transform.InverseTransformPoint(ClosestPoint());
         }
 
+        /// <summary>
+        /// Second hand takes hold (only with <see cref="keepGrabAngle"/>): turning <paramref name="otherHand"/> turns the
+        /// tool by the same amount around its middle, while the first hand keeps carrying it.
+        /// </summary>
+        public void BeginTwist(Transform otherHand)
+        {
+            if (!held || !keepGrabAngle || otherHand == null)
+                return;
+            m_Twister = otherHand;
+            m_TwistStart = otherHand.rotation;
+        }
+
+        /// <summary>Second hand lets go: the new angle stays.</summary>
+        public void EndTwist()
+        {
+            if (m_Twister == null)
+                return;
+            if (m_Controller != null)
+                m_GrabRotation = Quaternion.Inverse(m_Controller.rotation) * transform.rotation;
+            m_Twister = null;
+        }
+
         public void Release()
         {
+            m_Twister = null;
             m_Controller = null;
             transform.SetParent(m_HomeParent, false);
             transform.localPosition = m_HomePosition;
@@ -76,7 +105,10 @@ namespace T1DCGM
             if (keepGrabAngle)
             {
                 // Same angle in the hand as when it was picked up; its middle rides on the controller tip.
-                transform.rotation = m_Controller.rotation * m_GrabRotation;
+                var rotation = m_Controller.rotation * m_GrabRotation;
+                if (m_Twister != null)
+                    rotation = m_Twister.rotation * Quaternion.Inverse(m_TwistStart) * rotation; // add the second hand's turn
+                transform.rotation = rotation;
                 transform.position += tip - transform.TransformPoint(m_GrabCentre);
                 return;
             }

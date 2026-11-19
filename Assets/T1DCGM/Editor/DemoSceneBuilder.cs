@@ -28,6 +28,8 @@ namespace T1DCGM.EditorTools
         const string k_XROriginPrefab = "Assets/VRTemplateAssets/Prefabs/Setup/Complete XR Origin Set Up Variant.prefab";
         const string k_InterFont = "Assets/VRTemplateAssets/Fonts/Inter/Inter-Regular SDF.asset";
         const string k_InterTtf = "Assets/VRTemplateAssets/Fonts/Inter/Inter-Regular.ttf";
+        const string k_AtkinsonTtf = k_Root + "/FontSources/AtkinsonHyperlegible-Regular.ttf";
+        const string k_AtkinsonBoldTtf = k_Root + "/FontSources/AtkinsonHyperlegible-Bold.ttf";
 
         static readonly Dictionary<string, Material> s_Mats = new Dictionary<string, Material>();
         static TMP_FontAsset s_Font;
@@ -418,26 +420,50 @@ namespace T1DCGM.EditorTools
         }
 
         /// <summary>High-resolution dynamic font from the template's Inter TTF (the template's own atlas looks soft on boards).</summary>
+        /// <summary>
+        /// Atkinson Hyperlegible (made for legibility; OFL, in FontSources) with its real bold for &lt;b&gt;, and Inter
+        /// as a fallback for symbols Atkinson lacks (arrows, tick, star).
+        /// </summary>
         static TMP_FontAsset CrispFont()
         {
-            string path = $"{k_Root}/Fonts/Inter Crisp SDF.asset";
+            var inter = MakeFont(k_InterTtf, "Inter Crisp SDF");
+            var bold = MakeFont(k_AtkinsonBoldTtf, "Atkinson Hyperlegible Bold SDF");
+            var main = MakeFont(k_AtkinsonTtf, "Atkinson Hyperlegible SDF");
+            if (main == null)
+                return inter;
+            var weights = main.fontWeightTable;
+            if (bold != null && weights != null && weights.Length > 7)
+                weights[7].regularTypeface = bold; // 700 = <b>
+            if (inter != null)
+                main.fallbackFontAssetTable = new List<TMP_FontAsset> { inter };
+            EditorUtility.SetDirty(main);
+            AssetDatabase.SaveAssets();
+            return main;
+        }
+
+        static TMP_FontAsset MakeFont(string ttfPath, string assetName)
+        {
+            string path = $"{k_Root}/Fonts/{assetName}.asset";
             var existing = AssetDatabase.LoadAssetAtPath<TMP_FontAsset>(path);
             if (existing != null)
                 return existing;
-            var ttf = AssetDatabase.LoadAssetAtPath<Font>(k_InterTtf);
+            var ttf = AssetDatabase.LoadAssetAtPath<Font>(ttfPath);
             if (ttf == null)
+            {
+                Debug.LogWarning("[T1D] Font file not found: " + ttfPath);
                 return null;
+            }
             try
             {
                 var font = TMP_FontAsset.CreateFontAsset(ttf, 90, 9, UnityEngine.TextCore.LowLevel.GlyphRenderMode.SDFAA,
                     2048, 2048, AtlasPopulationMode.Dynamic, true);
-                font.name = "Inter Crisp SDF";
+                font.name = assetName;
                 AssetDatabase.CreateAsset(font, path);
-                font.material.name = "Inter Crisp SDF Material";
+                font.material.name = assetName + " Material";
                 AssetDatabase.AddObjectToAsset(font.material, font);
                 for (int i = 0; i < font.atlasTextures.Length; i++)
                 {
-                    font.atlasTextures[i].name = $"Inter Crisp SDF Atlas {i}";
+                    font.atlasTextures[i].name = $"{assetName} Atlas {i}";
                     AssetDatabase.AddObjectToAsset(font.atlasTextures[i], font);
                 }
                 AssetDatabase.SaveAssets();
@@ -445,7 +471,7 @@ namespace T1DCGM.EditorTools
             }
             catch (System.Exception e)
             {
-                Debug.LogWarning("[T1D] Could not create the crisp font, using the template font instead: " + e.Message);
+                Debug.LogWarning($"[T1D] Could not create {assetName}: " + e.Message);
                 return null;
             }
         }

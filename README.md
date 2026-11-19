@@ -11,7 +11,8 @@ generated scenes, meshes, materials, textures and font are not in git (see `.git
   - Intro: what a CGM is (a glucose reading every 5 minutes).
   - Arm calibration: touch the controller to your left shoulder, elbow and the back of your upper arm.
   - A figure of you (seen from behind) next to the board shows each calibration touch point with a pulsing yellow dot.
-  - Clean the site with an alcohol wipe, pick up a one-piece applicator (it keeps the angle you grab it at), press it
+  - Clean the site with an alcohol wipe, pick up a one-piece applicator (it keeps the angle you grab it at; hold left
+    GRIP near it and twist your left hand to turn it), press it
     flat onto the back of your real arm (TRIGGER clicks it in, no waiting), pull away. Scored on site, flatness and
     site rotation (old sites are saved).
   - Guidance tiers: Guided (virtual sleeve, green zone, mirror view of the back of the arm, haptics),
@@ -32,6 +33,8 @@ generated scenes, meshes, materials, textures and font are not in git (see `.git
     PLAY AGAIN starts over.
 - **Passthrough prototype** (`Assets/T1DCGM/Scenes/PassthroughPrototype.unity`): passthrough status and a touch test.
 - Food models for the side table: low-poly food pack in `Assets/Food Pack-Demo`.
+- Font: Atkinson Hyperlegible (Braille Institute, SIL Open Font License) in `Assets/T1DCGM/FontSources`; Inter is
+  the fallback for symbols.
 
 Controls: GRIP pick up, TRIGGER press applicator, A continue / record touch, B recalibrate (scene 1) or back (scene 2),
 X (left) bring the board in front of you, thumbstick forward to teleport, poke 3D buttons with the controller.

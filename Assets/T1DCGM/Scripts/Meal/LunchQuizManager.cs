@@ -73,16 +73,16 @@ namespace T1DCGM
         static readonly (string title, string body, string visual)[] k_Intro =
         {
             ("Lunch with type 1 diabetes",
-             "Before you eat, you count the carbs and take insulin to match.\n\nThere is rarely a label or a scale. You judge by eye.",
+             "Before eating, you count the carbs and take insulin to match.\n\nNo labels here. Judge by eye.",
              "lunch"),
             ("Why the count matters",
-             "Insulin is matched to the carbs you count.\n\n<b>Count too low:</b> glucose goes high.\n<b>Count too high:</b> it can drop low.",
+             "<b>Too low:</b> glucose goes high.\n<b>Too high:</b> it can drop low.",
              "count"),
             ("Part 1: Guess",
-             "Two dishes are already served. Pick them up and look closely.\n\nThen dial in your carb estimate on this tablet.",
+             "Look at each dish, then dial in your carb guess.",
              "guess-intro"),
             ("Part 2: Build",
-             "Fill a plate with bread, then with fruit, until you think it holds the carb target.\n\nThere is plenty: take a piece and another appears.",
+             "Fill a plate until it holds the carb target.\n\nTake a piece and another appears.",
              "build-intro"),
             ("Controls", "", "controls"),
         };
@@ -198,7 +198,7 @@ namespace T1DCGM
             m_Page = page;
             var (title, body, visual) = k_Intro[page];
             if (page == 0 && CgmSession.applied)
-                body = "Your new CGM is reading every 5 minutes.\n\n" + body;
+                body = "Your CGM is on.\n\n" + body;
             bool last = page == k_Intro.Length - 1;
             tablet.Show(title, body, Dots(page, k_Intro.Length), last ? "START" : "NEXT", page > 0 ? "BACK" : null, visual);
             tablet.Dock(null);
@@ -216,7 +216,7 @@ namespace T1DCGM
                 if (g.reveal != null) g.reveal.SetActive(false);
                 m_Guess = guessStart;
                 tablet.Show($"Guess {round + 1} of {guessStations.Count}: {Capital(g.foodName)}",
-                    $"How many grams of carbs are in this bowl of {g.foodName}?",
+                    "How many grams of carbs?",
                     RoundCounter(round), "LOCK IN", null, "guess");
                 tablet.SetValue(GuessText());
                 tablet.Dock(g.dock);
@@ -228,7 +228,7 @@ namespace T1DCGM
                 int i = round - guessStations.Count;
                 var b = buildStations[i];
                 tablet.Show($"Build a plate: {Capital(b.foodName)}",
-                    $"Put {b.foodName} on the plate until you think it holds <b>{m_Targets[i]:0} g</b> of carbs.\n\nThen poke <b>DONE</b>.",
+                    $"Fill the plate to <b>{m_Targets[i]:0} g</b> of carbs, then poke <b>DONE</b>.",
                     RoundCounter(round), "DONE", null, "target");
                 tablet.SetValue($"{m_Targets[i]:0} g");
                 tablet.Dock(b.dock);
@@ -259,8 +259,7 @@ namespace T1DCGM
             // The per-cup rule first, so it can be reused next time: "33 g per cup x 2 1/2 cups = 83 g".
             float miss = m_Guess - g.actualCarbs;
             string cups = g.amountText.Replace(" cups", "").Replace(" cup", "");
-            string body = $"{Capital(g.foodName)} has about <b>{g.carbsPerCup:0} g of carbs per cup</b>. This bowl held {g.amountText}: " +
-                $"{g.carbsPerCup:0} g × {cups} = <b>{g.actualCarbs:0} g</b>.\n{Effect(m_Guess, g.actualCarbs)}";
+            string body = $"<b>{g.carbsPerCup:0} g per cup</b> × {cups} = <b>{g.actualCarbs:0} g</b>\n{Effect(m_Guess, g.actualCarbs)}";
             ShowResult(Header(miss), body, CgmGraph.Simulate(g.actualCarbs, m_Guess), miss,
                 "Your guess", m_Guess, "Actual", g.actualCarbs);
             arrow.SetTarget(null);
@@ -340,9 +339,9 @@ namespace T1DCGM
             }
             float avg = done > 0 ? totalMiss / done : 0f;
 
-            var sb = new StringBuilder($"Average miss: <b>{avg:0} g</b> per meal.");
-            if (low > 0) sb.Append($"  Counted low {low}x (glucose ↑).");
-            if (high > 0) sb.Append($"  Counted high {high}x (glucose ↓).");
+            var sb = new StringBuilder($"Average miss: <b>{avg:0} g</b>");
+            if (low > 0) sb.Append($"   Low {low}x (↑)");
+            if (high > 0) sb.Append($"   High {high}x (↓)");
             tablet.Show("Lunch results", sb.ToString(), "", "PLAY AGAIN", null, "summary");
 
             var chart = tablet.summaryChart;
@@ -373,10 +372,10 @@ namespace T1DCGM
         static string Effect(float counted, float ate)
         {
             float miss = counted - ate;
-            if (Mathf.Abs(miss) <= TabletChart.CloseGrams) return "Close count: glucose should stay near range.";
+            if (Mathf.Abs(miss) <= TabletChart.CloseGrams) return "Close: glucose stays near range.";
             return miss < 0f
-                ? "Counted low: the insulin covers less than you ate, so glucose runs high."
-                : "Counted high: the insulin covers more than you ate, so glucose can drop low.";
+                ? "Too low: glucose runs high."
+                : "Too high: glucose can drop low.";
         }
 
         /// <summary>"40 g is about 3 sandwich slices, 2 thick slices, or 1 bagel." from the pieces at the station.</summary>

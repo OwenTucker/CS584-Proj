@@ -108,6 +108,7 @@ namespace T1DCGM.EditorTools
             trainer.station = station;
             trainer.xrCamera = cam;
             trainer.rightController = FindChild(rig, "Right Controller");
+            trainer.leftController = FindChild(rig, "Left Controller");
             trainer.ghost = ghost;
             trainer.mirror = mirror;
             trainer.wipe = wipe;

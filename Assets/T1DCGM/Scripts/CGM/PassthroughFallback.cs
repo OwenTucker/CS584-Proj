@@ -86,9 +86,8 @@ namespace T1DCGM
             Debug.Log(on ? "[T1D] Passthrough on." : $"[T1D] {reason} Using the virtual room. Runtime: '{OpenXRRuntime.name}'.");
             if (trainer != null)
                 trainer.SetPassthroughAvailable(on, on ? "" :
-                    $"<size=80%><color=#fc6>{reason} You are in a virtual room; your arm is shown as a blue sleeve. " +
-                    "For your real room: Meta Quest Link app > Settings > Beta: turn on Developer Runtime Features and " +
-                    "Passthrough over Meta Quest Link, then restart Play mode (Quest 2 shows it in black and white).</color></size>");
+                    $"<size=80%><color=#fc6>{reason} Virtual room: your arm is the blue sleeve. " +
+                    "For passthrough: Link app > Settings > Beta > Developer Runtime Features + Passthrough over Link, then restart Play.</color></size>");
         }
     }
 }
